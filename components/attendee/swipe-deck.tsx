@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { createPortal } from "react-dom";
 import {
   decideSwipe,
+  isTap,
   swipeDistanceThreshold,
   type SwipeDirection,
 } from "@/lib/client/swipe-decision";
@@ -114,6 +115,8 @@ export function SwipeDeck(props: {
   canUndo?: boolean;
   /** A card that undo put back: it flies in from the side it left by. */
   returningCard?: { id: string; direction: SwipeDirection } | null;
+  /** Tapping the top card (or Enter on the deck) shows its photo larger. */
+  onOpenCard?: (card: SwipeCard) => void;
   disabled?: boolean;
   className?: string;
 }): React.JSX.Element | null {
@@ -123,6 +126,7 @@ export function SwipeDeck(props: {
     onUndo,
     canUndo = false,
     returningCard = null,
+    onOpenCard,
     disabled = false,
     className,
   } = props;
@@ -148,7 +152,7 @@ export function SwipeDeck(props: {
   const pileRef = useRef<HTMLDivElement | null>(null);
   const shownIdsRef = useRef<ReadonlySet<string> | null>(null);
   const pointerIdRef = useRef<number | null>(null);
-  const dragOriginRef = useRef({ x: 0, time: 0 });
+  const dragOriginRef = useRef({ x: 0, y: 0, time: 0 });
 
   /*
    * Undo: the card put back flies in from the side it left by (a fade under
@@ -258,7 +262,7 @@ export function SwipeDeck(props: {
       if (disabled || activeFlight !== null || e.button !== 0) return;
       e.currentTarget.setPointerCapture(e.pointerId);
       pointerIdRef.current = e.pointerId;
-      dragOriginRef.current = { x: e.clientX, time: Date.now() };
+      dragOriginRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
       setIsDragging(true);
       setDragThreshold(
         swipeDistanceThreshold(cardRef.current?.offsetWidth ?? 0)
@@ -291,7 +295,15 @@ export function SwipeDeck(props: {
       }
 
       const dx = e.clientX - dragOriginRef.current.x;
+      const dy = e.clientY - dragOriginRef.current.y;
       const elapsed = Date.now() - dragOriginRef.current.time;
+
+      if (onOpenCard && topCard && isTap(dx, dy, elapsed)) {
+        setDragOffset(0);
+        onOpenCard(topCard);
+        return;
+      }
+
       const cardWidth = cardRef.current?.offsetWidth ?? 320;
       const decision = decideSwipe(dx, cardWidth, elapsed);
 
@@ -301,7 +313,7 @@ export function SwipeDeck(props: {
         setDragOffset(0);
       }
     },
-    [disabled, isDragging, activeFlight, topCard, startFlyOut],
+    [disabled, isDragging, activeFlight, topCard, startFlyOut, onOpenCard],
   );
 
   const onPointerCancel = useCallback(
@@ -327,9 +339,17 @@ export function SwipeDeck(props: {
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
         startFlyOut(topCard, "right");
+      } else if (
+        e.key === "Enter" &&
+        onOpenCard &&
+        // Only on the deck itself: Enter on Undo/Skip/Vote must stay a click.
+        e.target === e.currentTarget
+      ) {
+        e.preventDefault();
+        onOpenCard(topCard);
       }
     },
-    [disabled, activeFlight, topCard, startFlyOut],
+    [disabled, activeFlight, topCard, startFlyOut, onOpenCard],
   );
 
   /* Empty check */
@@ -376,7 +396,11 @@ export function SwipeDeck(props: {
       data-swipe-deck
       tabIndex={0}
       role="region"
-      aria-label="Swipe deck. Use the left and right arrow keys to skip or vote."
+      aria-label={
+        onOpenCard
+          ? "Swipe deck. Use the left and right arrow keys to skip or vote, and Enter or a tap on the photo to see it larger."
+          : "Swipe deck. Use the left and right arrow keys to skip or vote."
+      }
       onKeyDown={onKeyDown}
       className={cn(
         // A size container: the card is sized from the space the parent

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { decideSwipe, swipeDistanceThreshold } from "./swipe-decision.ts";
+import { decideSwipe, isTap, swipeDistanceThreshold } from "./swipe-decision.ts";
 
 // A slow drag: 1000 ms is far below flick speed for any distance tested here.
 const SLOW = 1000;
@@ -50,5 +50,23 @@ describe("swipeDistanceThreshold", () => {
     assert.equal(swipeDistanceThreshold(400), 110);
     assert.equal(swipeDistanceThreshold(200), 60);
     assert.equal(swipeDistanceThreshold(0), 110);
+  });
+});
+
+describe("isTap", () => {
+  it("treats a quick press that barely moves as a tap", () => {
+    assert.equal(isTap(0, 0, 80), true);
+    assert.equal(isTap(4, -5, 250), true);
+  });
+
+  it("does not treat a drag in any direction as a tap", () => {
+    assert.equal(isTap(12, 0, 100), false);
+    assert.equal(isTap(0, -15, 100), false);
+    assert.equal(isTap(8, 8, 100), false);
+  });
+
+  it("does not treat a long press as a tap", () => {
+    assert.equal(isTap(0, 0, 400), false);
+    assert.equal(isTap(2, 1, 900), false);
   });
 });

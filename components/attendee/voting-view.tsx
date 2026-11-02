@@ -36,6 +36,7 @@ import {
   voteChangeFor,
   type SwipeHistory,
 } from "@/lib/client/swipe-history";
+import { PhotoPreview, type PreviewPhoto } from "./photo-preview";
 import { VoteGrid } from "./vote-grid";
 
 const Tab = {
@@ -78,6 +79,12 @@ export function VotingView({
     direction: SwipeDirection;
   } | null>(null);
   const [seed] = React.useState(getDeckSeed);
+  // The photo stays set while `open` goes false, so it fades out with the preview.
+  const [preview, setPreview] = React.useState<{
+    photo: PreviewPhoto;
+    open: boolean;
+  } | null>(null);
+  const openPreview = (photo: PreviewPhoto) => setPreview({ photo, open: true });
   const [error, setError] = React.useState<string | null>(null);
   const inFlight = React.useRef(0);
   const loaded = React.useRef(false);
@@ -267,6 +274,7 @@ export function VotingView({
       votedIds={voted}
       pendingIds={pendingIds}
       onToggle={(id, vote) => void submitVote(id, vote)}
+      onOpenPhoto={openPreview}
     />
   );
 
@@ -310,6 +318,9 @@ export function VotingView({
               onUndo={handleUndo}
               canUndo={undoable.length > 0}
               returningCard={returningCard}
+              onOpenCard={(card) =>
+                openPreview({ url: card.imageUrl, name: card.title })
+              }
               className="min-h-56 flex-1 short:min-h-40"
             />
           </div>
@@ -389,6 +400,13 @@ export function VotingView({
           </TabsTrigger>
         </TabsList>
       </div>
+      <PhotoPreview
+        photo={preview?.photo ?? null}
+        open={preview?.open ?? false}
+        onOpenChange={(open) =>
+          setPreview((current) => (current ? { ...current, open } : null))
+        }
+      />
     </Tabs>
   );
 }

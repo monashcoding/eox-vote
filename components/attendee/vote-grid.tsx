@@ -2,6 +2,7 @@ import * as React from "react";
 import { Heart } from "lucide-react";
 import type { PublicNomineeDto } from "@/lib/api-types";
 import { Button } from "@/components/ui/button";
+import type { PreviewPhoto } from "./photo-preview";
 import { cn } from "@/lib/utils";
 
 /**
@@ -13,11 +14,13 @@ export function VoteGrid({
   votedIds,
   pendingIds,
   onToggle,
+  onOpenPhoto,
 }: {
   nominees: readonly PublicNomineeDto[];
   votedIds: ReadonlySet<string>;
   pendingIds: ReadonlySet<string>;
   onToggle: (nomineeId: string, vote: boolean) => void;
+  onOpenPhoto: (photo: PreviewPhoto) => void;
 }): React.JSX.Element {
   return (
     <ul className="grid grid-cols-2 gap-3">
@@ -32,12 +35,19 @@ export function VoteGrid({
               voted ? "border-primary bg-accent/70" : "border-border bg-card"
             )}
           >
-            <img
-              src={nominee.photoUrl}
-              alt={name}
-              loading="lazy"
-              className="aspect-[3/4] w-full object-cover"
-            />
+            <button
+              type="button"
+              aria-label={`See photo of ${name} larger`}
+              onClick={() => onOpenPhoto({ url: nominee.photoUrl, name })}
+              className="block w-full cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            >
+              <img
+                src={nominee.photoUrl}
+                alt=""
+                loading="lazy"
+                className="aspect-[3/4] w-full object-cover"
+              />
+            </button>
             <div className="flex flex-1 flex-col gap-2 p-3">
               <p className="truncate text-sm font-semibold">{name}</p>
               <Button
