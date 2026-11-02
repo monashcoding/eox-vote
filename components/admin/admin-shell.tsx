@@ -28,8 +28,8 @@ export function AdminShell({
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b-2 border-border bg-card/95 backdrop-blur-xl">
+    <div className="safe-b flex min-h-dvh flex-col bg-background text-foreground">
+      <header className="safe-t sticky top-0 z-40 border-b-2 border-border bg-card/95 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-col leading-tight">
             <Eyebrow>MAC - Best dressed</Eyebrow>

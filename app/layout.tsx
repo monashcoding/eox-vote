@@ -15,12 +15,14 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1f1f1f",
+  // Draw edge to edge; page shells pad themselves with env(safe-area-inset-*).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${poppins.variable} h-full`}>
-      <body className="min-h-full">{children}</body>
+      <body className="safe-x min-h-full">{children}</body>
     </html>
   );
 }

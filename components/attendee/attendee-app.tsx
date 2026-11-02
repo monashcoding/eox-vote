@@ -92,7 +92,7 @@ export function AttendeeApp(): React.JSX.Element {
 
   if (!state && offline) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center px-4 sm:px-6">
+      <main className="safe-t safe-b flex min-h-dvh flex-col items-center justify-center px-4 sm:px-6">
         <EmptyState
           as="h1"
           mascot={Mascot.Sad}
@@ -116,7 +116,7 @@ export function AttendeeApp(): React.JSX.Element {
 
   if (!session || session.stage === Stage.Pending) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center px-4 text-center sm:px-6">
+      <main className="safe-t safe-b flex min-h-dvh flex-col items-center justify-center px-4 text-center sm:px-6">
         <Eyebrow>Monash Association of Coding</Eyebrow>
         <h1 className="mt-4 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
           Best{" "}
@@ -139,7 +139,7 @@ export function AttendeeApp(): React.JSX.Element {
   const countdownCopy = formatCountdownCopy(session.stage, countdown);
 
   return (
-    <main className="flex min-h-dvh flex-col bg-background text-foreground">
+    <main className="safe-t safe-b flex min-h-dvh flex-col bg-background text-foreground">
       <header className="border-b-2 border-border bg-card/95 px-4 py-5 backdrop-blur-xl sm:px-6 short:py-2">
         <div className="mx-auto flex max-w-xl flex-col items-center space-y-2 text-center short:space-y-0.5">
           <Eyebrow className="short:hidden">Monash Association of Coding</Eyebrow>

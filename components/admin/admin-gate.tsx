@@ -69,7 +69,7 @@ export function AdminGate({ children }: AdminGateProps): React.JSX.Element {
   }, []);
   if (status === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="safe-t safe-b flex min-h-dvh items-center justify-center bg-background">
         <Spinner label="Checking sign-in" />
       </div>
     );
@@ -77,7 +77,7 @@ export function AdminGate({ children }: AdminGateProps): React.JSX.Element {
 
   if (status === "unauthenticated") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="safe-t safe-b min-h-dvh bg-background">
         <PasscodeForm
           onSuccess={() => setStatus("authenticated")}
           initialError={initialError}
