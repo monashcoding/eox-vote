@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Eye, EyeOff, ImagePlus, Pencil, Trash2 } from "lucide-react";
 import type { AdminNomineeDto, AdminSessionDetailDto } from "@/lib/api-types";
-import { api } from "@/lib/client/api";
+import { useAdminApi } from "./admin-gate";
 import { resizeImage } from "@/lib/client/resize-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,7 @@ function NomineeRow({
   showVotes: boolean;
   onRefresh: () => Promise<void>;
 }): React.JSX.Element {
+  const adminApi = useAdminApi();
   const [editing, setEditing] = React.useState(false);
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
   const [firstName, setFirstName] = React.useState(nominee.firstName);
@@ -40,7 +41,7 @@ function NomineeRow({
     setBusy(true);
     setError(null);
     try {
-      await api(`/api/admin/nominees/${nominee.id}`, { method: "PATCH", body });
+      await adminApi(`/api/admin/nominees/${nominee.id}`, { method: "PATCH", body });
       onDone?.();
       await onRefresh();
     } catch (err: unknown) {
@@ -65,7 +66,7 @@ function NomineeRow({
     try {
       const body = new FormData();
       body.set("photo", await resizeImage(file));
-      await api(`/api/admin/nominees/${nominee.id}`, { method: "PATCH", body });
+      await adminApi(`/api/admin/nominees/${nominee.id}`, { method: "PATCH", body });
       await onRefresh();
     } catch (err: unknown) {
       setError(errorMessage(err, "Could not replace the photo"));
@@ -78,7 +79,7 @@ function NomineeRow({
     setBusy(true);
     setError(null);
     try {
-      await api(`/api/admin/nominees/${nominee.id}`, { method: "DELETE" });
+      await adminApi(`/api/admin/nominees/${nominee.id}`, { method: "DELETE" });
       await onRefresh();
     } catch (err: unknown) {
       setError(errorMessage(err, "Could not delete the nomination"));

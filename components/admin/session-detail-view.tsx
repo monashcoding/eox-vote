@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { AdminSessionDetailDto } from "@/lib/api-types";
-import { api, ApiError } from "@/lib/client/api";
+import { ApiError } from "@/lib/client/api";
+import { useAdminApi } from "./admin-gate";
 import { usePolling } from "@/lib/client/use-polling";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState, Mascot } from "@/components/ui/empty-state";
@@ -29,9 +30,10 @@ export function SessionDetailView({
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  const adminApi = useAdminApi();
   const fetchSession = React.useCallback(async () => {
     try {
-      const data = await api<AdminSessionDetailDto>(
+      const data = await adminApi<AdminSessionDetailDto>(
         `/api/admin/sessions/${sessionId}`
       );
       setSession(data);
@@ -45,7 +47,7 @@ export function SessionDetailView({
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [adminApi, sessionId]);
 
   // Spec: "admin detail polls every 2000 ms"
   usePolling(fetchSession, 2000);

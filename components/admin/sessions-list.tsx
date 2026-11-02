@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { Plus, Trash2, ExternalLink, Star, StarOff, Users, ThumbsUp } from "lucide-react";
 import { AdminSessionSummaryDto } from "@/lib/api-types";
-import { api, ApiError } from "@/lib/client/api";
+import { ApiError } from "@/lib/client/api";
+import { useAdminApi } from "./admin-gate";
 import { StagePill, CurrentBadge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
@@ -22,6 +23,7 @@ export function SessionsList({
   initialSessions = [],
   initialCurrentSessionId = null,
 }: SessionsListProps): React.JSX.Element {
+  const adminApi = useAdminApi();
   const [sessions, setSessions] = React.useState<AdminSessionSummaryDto[]>(initialSessions);
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(initialCurrentSessionId);
   const [error, setError] = React.useState<string | null>(null);
@@ -41,7 +43,7 @@ export function SessionsList({
 
   const fetchSessions = React.useCallback(async () => {
     try {
-      const data = await api<{
+      const data = await adminApi<{
         sessions: AdminSessionSummaryDto[];
         currentSessionId: string | null;
       }>("/api/admin/sessions");
@@ -55,11 +57,11 @@ export function SessionsList({
         setError("Could not load sessions");
       }
     }
-  }, []);
+  }, [adminApi]);
 
   React.useEffect(() => {
     let active = true;
-    api<{
+    adminApi<{
       sessions: AdminSessionSummaryDto[];
       currentSessionId: string | null;
     }>("/api/admin/sessions")
@@ -80,7 +82,7 @@ export function SessionsList({
     return () => {
       active = false;
     };
-  }, []);
+  }, [adminApi]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +92,7 @@ export function SessionsList({
     setCreateError(null);
 
     try {
-      await api("/api/admin/sessions", {
+      await adminApi("/api/admin/sessions", {
         method: "POST",
         body: JSON.stringify({
           name: name.trim(),
@@ -122,7 +124,7 @@ export function SessionsList({
     setActionLoadingId(sessionId);
 
     try {
-      await api("/api/admin/current", {
+      await adminApi("/api/admin/current", {
         method: "PUT",
         body: JSON.stringify({ sessionId: nextSessionId }),
       });
@@ -143,7 +145,7 @@ export function SessionsList({
   const handleDelete = async (sessionId: string) => {
     setActionLoadingId(sessionId);
     try {
-      await api(`/api/admin/sessions/${sessionId}`, {
+      await adminApi(`/api/admin/sessions/${sessionId}`, {
         method: "DELETE",
       });
       setConfirmDeleteId(null);

@@ -8,7 +8,7 @@ import {
   ControlRequest,
   Stage,
 } from "@/lib/api-types";
-import { api } from "@/lib/client/api";
+import { useAdminApi } from "./admin-gate";
 import { placeLabel } from "@/lib/place-label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,7 @@ export function ResultsPanel({
   session,
   onRefresh,
 }: ResultsPanelProps): React.JSX.Element | null {
+  const adminApi = useAdminApi();
   const [peeking, setPeeking] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -45,7 +46,7 @@ export function ResultsPanel({
     setBusy(true);
     setError(null);
     try {
-      await api<AdminSessionDetailDto>(
+      await adminApi<AdminSessionDetailDto>(
         `/api/admin/sessions/${session.id}/control`,
         { method: "POST", body: JSON.stringify(request) }
       );

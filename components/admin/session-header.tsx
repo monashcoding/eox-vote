@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, Star, StarOff } from "lucide-react";
 import { AdminSessionDetailDto } from "@/lib/api-types";
-import { api, ApiError } from "@/lib/client/api";
+import { ApiError } from "@/lib/client/api";
+import { useAdminApi } from "./admin-gate";
 import { CurrentBadge, StagePill } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/label";
@@ -18,12 +19,13 @@ export function SessionHeader({
   session,
   onRefresh,
 }: SessionHeaderProps): React.JSX.Element {
+  const adminApi = useAdminApi();
   const [updatingCurrent, setUpdatingCurrent] = React.useState(false);
 
   const handleToggleCurrent = async () => {
     setUpdatingCurrent(true);
     try {
-      await api("/api/admin/current", {
+      await adminApi("/api/admin/current", {
         method: "PUT",
         body: JSON.stringify({
           sessionId: session.isCurrent ? null : session.id,

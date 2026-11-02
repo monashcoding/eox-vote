@@ -4,7 +4,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Check, Trash2 } from "lucide-react";
 import { AdminSessionDetailDto } from "@/lib/api-types";
-import { api, ApiError } from "@/lib/client/api";
+import { ApiError } from "@/lib/client/api";
+import { useAdminApi } from "./admin-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorNote } from "@/components/ui/empty-state";
@@ -55,6 +56,7 @@ export function SessionSettingsPanel({
   onRefresh,
 }: SessionSettingsPanelProps): React.JSX.Element {
   const router = useRouter();
+  const adminApi = useAdminApi();
 
   // Only fields the host has edited live here. Everything else shows the
   // polled session, so changes from the stage panel or another tab show up
@@ -93,7 +95,7 @@ export function SessionSettingsPanel({
     setSaveSuccess(false);
 
     try {
-      await api(`/api/admin/sessions/${session.id}`, {
+      await adminApi(`/api/admin/sessions/${session.id}`, {
         method: "PATCH",
         body: JSON.stringify(changes),
       });
@@ -115,7 +117,7 @@ export function SessionSettingsPanel({
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await api(`/api/admin/sessions/${session.id}`, {
+      await adminApi(`/api/admin/sessions/${session.id}`, {
         method: "DELETE",
       });
       router.push("/admin");
