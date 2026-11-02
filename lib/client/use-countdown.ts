@@ -76,18 +76,24 @@ class ClockStore {
     this.notify();
   }
 
-  getSnapshot = (): { now: number; offset: number } => {
-    return { now: this.currentNow, offset: this.serverOffset };
-  };
+  private snapshot: { now: number; offset: number } = { now: 0, offset: 0 };
+  private readonly serverSnapshot = { now: 0, offset: 0 };
 
-  getServerSnapshot = (): { now: number; offset: number } => {
-    return { now: 0, offset: 0 };
-  };
+  // useSyncExternalStore needs referentially stable snapshots between changes.
+  private refreshSnapshot(): void {
+    this.snapshot = { now: this.currentNow, offset: this.serverOffset };
+  }
+
+  getSnapshot = (): { now: number; offset: number } => this.snapshot;
+
+  getServerSnapshot = (): { now: number; offset: number } =>
+    this.serverSnapshot;
 
   subscribe = (listener: ClockListener): (() => void) => {
     this.listeners.add(listener);
     if (this.listeners.size === 1) {
       this.currentNow = Date.now();
+      this.refreshSnapshot();
       this.intervalId = setInterval(() => {
         this.currentNow = Date.now();
         this.notify();
@@ -103,6 +109,7 @@ class ClockStore {
   };
 
   private notify(): void {
+    this.refreshSnapshot();
     for (const listener of this.listeners) {
       listener();
     }
