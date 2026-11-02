@@ -140,15 +140,20 @@ export function AttendeeApp(): React.JSX.Element {
   const countdownCopy = formatCountdownCopy(session.stage, countdown);
 
   return (
-    <main className="safe-t safe-b flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="border-b-2 border-border bg-card/95 px-4 py-5 backdrop-blur-xl sm:px-6 short:py-2">
+    // While the swipe deck shows, the shell is exactly one screen tall: the
+    // deck sizes its card from the height left over, which needs a definite
+    // height all the way down (taller content still scrolls past it).
+    <main className="safe-t safe-b flex min-h-dvh flex-col bg-background text-foreground has-[[data-swipe-deck]]:h-dvh">
+      <header className="border-b-2 border-border bg-card/95 px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5 short:py-2">
         <div className="mx-auto flex max-w-xl flex-col items-center space-y-2 text-center short:space-y-0.5">
           <Eyebrow className="short:hidden">Monash Association of Coding</Eyebrow>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <h1 className="text-2xl leading-tight font-semibold tracking-tight sm:text-3xl short:text-xl">
+          {/* The pill stays beside the title and long names are clamped, so
+              the voting deck keeps its room on small screens. */}
+          <div className="flex max-w-full items-center justify-center gap-3">
+            <h1 className="line-clamp-2 min-w-0 text-2xl leading-tight font-semibold tracking-tight wrap-break-word sm:text-3xl short:line-clamp-1 short:text-xl">
               {session.name}
             </h1>
-            <StagePill stage={session.stage} />
+            <StagePill stage={session.stage} className="shrink-0" />
           </div>
           {countdownCopy && (
             <p
@@ -164,7 +169,8 @@ export function AttendeeApp(): React.JSX.Element {
         </div>
       </header>
 
-      <section className="animate-rise-in mx-auto w-full max-w-xl flex-1 px-4 py-6 sm:px-6 sm:py-8 short:py-3">
+      {/* A flex column, so the swipe deck can fill the height left under the header. */}
+      <section className="animate-rise-in mx-auto flex w-full max-w-xl flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8 short:py-3">
         <StageBody session={session} onChanged={fetchState} />
       </section>
     </main>

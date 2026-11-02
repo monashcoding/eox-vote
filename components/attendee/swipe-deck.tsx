@@ -222,20 +222,24 @@ export function SwipeDeck(props: {
 
   return (
     <div
+      data-swipe-deck
       tabIndex={0}
       role="region"
       aria-label="Swipe deck. Use the left and right arrow keys to skip or vote."
       onKeyDown={onKeyDown}
       className={cn(
-        "animate-rise-in flex flex-col items-center gap-6 rounded-panel outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background short:flex-row short:justify-center",
+        // A size container: the card is sized from the space the parent
+        // gives the deck, so the card and Skip/Vote always fit together.
+        "animate-rise-in flex flex-col items-center gap-6 rounded-panel outline-none [container-type:size] [--deck-controls:5rem] [--deck-max:20rem] focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:[--deck-max:24rem] compact:[--deck-controls:4.25rem] short:flex-row short:justify-center",
         className
       )}
     >
-      {/* Card stack container. Its size follows the viewport height as well as
-          the width, so the card and Skip/Vote always fit on screen together;
-          short (landscape) viewports put the buttons beside the card. */}
+      {/* Card stack: 3:4 and as wide as the deck allows once the Skip/Vote
+          row (--deck-controls: button plus gap) is taken out of its height.
+          Short (landscape) viewports put the buttons beside the card, so the
+          width gives up that space instead. */}
       <div
-        className="relative aspect-3/4 w-[min(100%,max(12rem,calc((100svh-23rem)*0.75)))] max-w-xs select-none sm:max-w-sm short:h-[max(10rem,calc(100svh-11.5rem))] short:w-auto short:max-w-none"
+        className="relative aspect-3/4 w-[min(var(--deck-max),100cqw,calc((100cqh_-_var(--deck-controls))*0.75))] shrink-0 select-none short:w-[min(calc(100cqh*0.75),calc(100cqw_-_var(--deck-controls)))]"
         style={{ touchAction: "pan-y" }}
       >
         {visibleCards.map((card, index) => {
@@ -355,7 +359,7 @@ export function SwipeDeck(props: {
       </div>
 
       {/* Control buttons: same actions as the gestures */}
-      <div className="flex items-center gap-6 short:flex-col">
+      <div className="flex shrink-0 items-center gap-6 short:flex-col">
         <Button
           type="button"
           variant="outline"

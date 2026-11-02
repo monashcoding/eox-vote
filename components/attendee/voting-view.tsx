@@ -197,7 +197,12 @@ export function VotingView({
   );
 
   return (
-    <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+    // A flex column down to the deck, so the deck gets the height left over.
+    <Tabs
+      value={tab}
+      onValueChange={(value) => setTab(value as Tab)}
+      className="flex flex-1 flex-col"
+    >
       <TabsList>
         <TabsTrigger value={Tab.Swipe}>Swipe</TabsTrigger>
         <TabsTrigger value={Tab.All}>All ({ordered.length})</TabsTrigger>
@@ -205,7 +210,7 @@ export function VotingView({
 
       <ErrorNote message={error} className="mt-4" />
 
-      <TabsContent value={Tab.Swipe} className="mt-6 short:mt-3">
+      <TabsContent value={Tab.Swipe} className="mt-4 flex flex-1 flex-col sm:mt-6 short:mt-3">
         {ordered.length === 0 ? (
           <EmptyState
             mascot={Mascot.Wave}
@@ -213,16 +218,21 @@ export function VotingView({
             description="Nobody was nominated in this session."
           />
         ) : cards.length > 0 ? (
-          <div className="space-y-4 short:space-y-2">
+          <div className="flex flex-1 flex-col gap-4 short:gap-2">
             <div className="text-center">
               <Eyebrow>
                 {cards.length} of {ordered.length} left
               </Eyebrow>
-              <p className="mt-1 text-sm text-muted short:hidden">
+              {/* Dropped below 44rem tall: the card needs the room more than the hint. */}
+              <p className="mt-1 text-sm text-muted [@media(height<44rem)]:hidden">
                 Swipe right to vote, left to skip.
               </p>
             </div>
-            <SwipeDeck cards={cards} onSwipe={handleSwipe} />
+            <SwipeDeck
+              cards={cards}
+              onSwipe={handleSwipe}
+              className="min-h-56 flex-1 short:min-h-40"
+            />
           </div>
         ) : (
           <section className="space-y-4">
