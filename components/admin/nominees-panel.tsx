@@ -4,6 +4,7 @@ import * as React from "react";
 import { Eye, EyeOff, ImagePlus, Pencil, Trash2 } from "lucide-react";
 import type { AdminNomineeDto, AdminSessionDetailDto } from "@/lib/api-types";
 import { useAdminApi } from "./admin-gate";
+import { errorMessage } from "@/lib/client/error-message";
 import { resizeImage } from "@/lib/client/resize-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +14,6 @@ import { Input } from "@/components/ui/input";
 interface NomineesPanelProps {
   session: AdminSessionDetailDto;
   onRefresh: () => Promise<void>;
-}
-
-function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof Error ? err.message : fallback;
 }
 
 function NomineeRow({

@@ -9,6 +9,7 @@ import {
   Stage,
 } from "@/lib/api-types";
 import { useAdminApi } from "./admin-gate";
+import { errorMessage } from "@/lib/client/error-message";
 import { placeLabel } from "@/lib/place-label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,7 +53,7 @@ export function ResultsPanel({
       );
       await onRefresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Could not update the reveal");
+      setError(errorMessage(err, "Could not update the reveal"));
     } finally {
       setBusy(false);
     }

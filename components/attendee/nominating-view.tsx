@@ -4,6 +4,7 @@ import * as React from "react";
 import { ImagePlus, Pencil, Trash2 } from "lucide-react";
 import type { MeDto, PublicNomineeDto, PublicSessionDto } from "@/lib/api-types";
 import { api, ApiError } from "@/lib/client/api";
+import { errorMessage } from "@/lib/client/error-message";
 import { resizeImage } from "@/lib/client/resize-image";
 import { usePolling } from "@/lib/client/use-polling";
 import { cn } from "@/lib/utils";
@@ -21,10 +22,6 @@ const Tab = {
 } as const;
 
 type Tab = (typeof Tab)[keyof typeof Tab];
-
-function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof Error ? err.message : fallback;
-}
 
 interface PhotoFieldProps {
   id: string;

@@ -9,7 +9,7 @@ import {
   Stage,
   StageMoveAction,
 } from "@/lib/api-types";
-import { ApiError } from "@/lib/client/api";
+import { errorMessage } from "@/lib/client/error-message";
 import { useCountdown } from "@/lib/client/use-countdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -103,13 +103,7 @@ export function SessionStagePanel({
       );
       await onRefresh();
     } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred");
-      }
+      setError(errorMessage(err, "An unexpected error occurred"));
     } finally {
       setLoading(false);
     }
@@ -143,13 +137,7 @@ export function SessionStagePanel({
       });
       await onRefresh();
     } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Could not update auto-advance");
-      }
+      setError(errorMessage(err, "Could not update auto-advance"));
     } finally {
       setLoading(false);
     }

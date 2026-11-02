@@ -15,6 +15,7 @@ import {
   saveSwipedIds,
   shuffleBySeed,
 } from "@/lib/client/deck-storage";
+import { errorMessage } from "@/lib/client/error-message";
 import { usePolling } from "@/lib/client/use-polling";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
@@ -71,9 +72,7 @@ export function VotingView({
       }
     } catch (err: unknown) {
       if (!loaded.current) {
-        setError(
-          err instanceof Error ? err.message : "Could not load your votes"
-        );
+        setError(errorMessage(err, "Could not load your votes"));
       }
     }
   }, []);
@@ -150,11 +149,7 @@ export function VotingView({
         setError("That entry is no longer available.");
         void onChanged();
       } else {
-        setError(
-          err instanceof Error
-            ? `Could not save your vote. ${err.message}`
-            : "Could not save your vote. Try again."
-        );
+        setError(`Could not save your vote. ${errorMessage(err, "Try again.")}`);
       }
       return false;
     } finally {

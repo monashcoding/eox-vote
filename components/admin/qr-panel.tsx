@@ -4,6 +4,7 @@ import * as React from "react";
 import { Download } from "lucide-react";
 import { AdminSessionDetailDto } from "@/lib/api-types";
 import { qrFilename } from "@/lib/qr-filename";
+import { errorMessage } from "@/lib/client/error-message";
 import { renderQrImage } from "@/lib/client/qr-render";
 import { Button } from "@/components/ui/button";
 import {
@@ -111,9 +112,7 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
       // Give the browser a moment to start the download before releasing.
       setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
     } catch (err: unknown) {
-      setSaveError(
-        err instanceof Error ? err.message : "Could not save the QR code."
-      );
+      setSaveError(errorMessage(err, "Could not save the QR code."));
     } finally {
       setSaving(false);
     }
