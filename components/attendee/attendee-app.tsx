@@ -3,6 +3,7 @@
 import * as React from "react";
 import { PublicSessionDto, PublicStateDto, Stage } from "@/lib/api-types";
 import { api } from "@/lib/client/api";
+import { errorMessage } from "@/lib/client/error-message";
 import { formatCountdownCopy, useCountdown } from "@/lib/client/use-countdown";
 import { cn } from "@/lib/utils";
 import { usePolling } from "@/lib/client/use-polling";
@@ -79,7 +80,7 @@ export function AttendeeApp(): React.JSX.Element {
       setState(res);
       setOffline(false);
     } catch (err: unknown) {
-      console.error("Failed to fetch attendee state:", err);
+      console.error("Failed to fetch attendee state:", errorMessage(err, String(err)));
       setOffline(true);
     }
   }, []);
