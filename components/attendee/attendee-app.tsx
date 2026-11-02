@@ -11,6 +11,7 @@ import { StagePill } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
+import { MacLogo } from "@/components/ui/mac-logo";
 import { NominatingView } from "./nominating-view";
 import { ResultsView } from "./results-view";
 import { VotingView } from "./voting-view";
@@ -118,6 +119,7 @@ export function AttendeeApp(): React.JSX.Element {
   if (!session || session.stage === Stage.Pending) {
     return (
       <main className="safe-t safe-b flex min-h-dvh flex-col items-center justify-center overflow-x-clip px-4 text-center sm:px-6">
+        <MacLogo size={64} decorative className="mb-4" />
         <Eyebrow>Monash Association of Coding</Eyebrow>
         <h1 className="mt-4 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
           <span className="block">EOX 2026</span>{" "}
@@ -161,7 +163,10 @@ export function AttendeeApp(): React.JSX.Element {
       {/* Above the section (which has its own stacking context) so the offline note can overhang it. */}
       <header className="relative z-10 border-b-2 border-border bg-card/95 px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5 short:py-2">
         <div className="mx-auto flex max-w-xl flex-col items-center space-y-2 text-center short:space-y-0.5">
-          <Eyebrow className="short:hidden">Monash Association of Coding</Eyebrow>
+          <div className="flex items-center gap-2 short:hidden">
+            <MacLogo size={24} decorative />
+            <Eyebrow>Monash Association of Coding</Eyebrow>
+          </div>
           {/* The pill stays beside the title and long names are clamped, so
               the voting deck keeps its room on small screens. */}
           <div className="flex max-w-full items-center justify-center gap-3">

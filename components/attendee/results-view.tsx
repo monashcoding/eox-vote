@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
+import { MacLogo } from "@/components/ui/mac-logo";
 
 const WINNER_PLACE = 1;
 
@@ -189,9 +190,12 @@ export function ResultsView({
       </div>
 
       {finished && (
-        <p className="pt-2 text-center text-base font-semibold">
-          Thanks for voting!
-        </p>
+        <div className="flex flex-col items-center gap-3 pt-2">
+          <MacLogo size={48} decorative />
+          <p className="text-center text-base font-semibold">
+            Thanks for voting!
+          </p>
+        </div>
       )}
     </div>
   );
