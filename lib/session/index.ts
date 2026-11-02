@@ -7,6 +7,7 @@ import {
   TimerDto,
 } from "../api-types";
 import { applyAutoAdvance, applyControl, canAutoAdvance } from "./engine";
+import { invalidatePublicState } from "./public-state";
 import { db } from "../db";
 import { appSettings, nominees, sessions, votes } from "../db/schema";
 import { HttpError } from "../http";
@@ -90,6 +91,7 @@ export async function setCurrentSession(
     .set({ currentSessionId: sessionId })
     .where(eq(appSettings.id, 1));
 
+  invalidatePublicState();
   return { currentSessionId: sessionId };
 }
 
@@ -223,6 +225,7 @@ export async function applyAdminSessionControl(
       .where(eq(sessions.id, id))
       .returning();
 
+    invalidatePublicState();
     return toAdminSessionDetailDto(updated, currentSessionId);
   });
 }
@@ -260,6 +263,7 @@ export async function createAdminSession(
     })
     .returning();
 
+  invalidatePublicState();
   const currentSessionId = await getCurrentSessionId();
   return toAdminSessionDetailDto(inserted, currentSessionId);
 }
@@ -315,6 +319,7 @@ export async function updateAdminSession(
     throw new HttpError(404, "Session not found");
   }
 
+  invalidatePublicState();
   const currentSessionId = await getCurrentSessionId();
   return toAdminSessionDetailDto(updated, currentSessionId);
 }
@@ -325,6 +330,7 @@ export async function deleteAdminSession(id: string): Promise<void> {
     .where(eq(sessions.id, id))
     .returning({ id: sessions.id });
 
+  invalidatePublicState();
   if (deleted.length === 0) {
     throw new HttpError(404, "Session not found");
   }

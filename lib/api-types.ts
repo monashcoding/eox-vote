@@ -37,8 +37,6 @@ export interface PublicSessionDto {
   stage: Stage;
   timer: TimerDto;
   autoAdvance: boolean;
-  nominees: PublicNomineeDto[];
-  results: PublicResultsDto | null;
 }
 
 export interface PublicStateDto {
