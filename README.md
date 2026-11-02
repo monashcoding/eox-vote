@@ -54,6 +54,8 @@ The passcode lives in Postgres as `app_settings.admin_passcode` (plain text) and
 update app_settings set admin_passcode = 'a-new-passcode';
 ```
 
+For a real event use a long random passcode, for example the output of `openssl rand -base64 24`, not a word or a short code like `letmein`. Wrong attempts are slowed and rate limited, but a guessable passcode still falls to a patient attacker, and it gives full control over every session.
+
 Sign-in cookies are signed with the current passcode, so **changing it signs every host out**. While the passcode is empty, sign-in is refused with a message asking for the database administrator.
 
 ### QR codes
@@ -87,10 +89,14 @@ The app is a plain Node server plus Postgres. There is no serverless or edge dep
 
 Notes:
 
-- **HTTPS is required in production.** The device and admin cookies are marked `secure` when `NODE_ENV` is `production`, so browsers will not send them over plain HTTP. Hosts will be unable to sign in and attendees will not be able to nominate or vote if the site is served over HTTP (except on `localhost`).
+- **HTTPS is required in production.** The device and admin cookies are marked `secure` when `NODE_ENV` is `production`, so browsers only store and send them over HTTPS (or on `localhost`). Serving `pnpm start` to attendees as `http://192.168.x.x:3000` on a LAN breaks quietly:
+  - attendees get a new device identity on every request, so voting and nominating fail with a message asking them to reload, and they cannot see or edit their own entries;
+  - admin sign-in appears to succeed but the host is never signed in.
+
+  Put the app behind HTTPS: a reverse proxy with a certificate (nginx, Caddy), or a tunnel such as Cloudflare Tunnel or ngrok, and give attendees the `https://` address.
 - **Instances.** The public state endpoint keeps a 1 second in-process cache, and every change on the same instance clears it immediately. A single instance keeps that cache coherent. Multiple instances behind a load balancer work, because all data is in Postgres, but each instance caches separately, so a change made through one instance can take up to a second to show on the others.
 - **Never rotate `DEVICE_SECRET` during an event.** It signs the device cookies, so a new value gives every device a new identity: earlier votes no longer count as theirs (they can vote again) and attendees can no longer edit their own nominations.
-- Photos are request bodies of up to 5 MB, so make sure your proxy allows that.
+- **Limit request bodies at the proxy too.** The app rejects uploads over about 5.5 MB, and any upload without a `Content-Length`, before reading them, but a proxy limit stops oversized bodies before they reach Node. With nginx, set `client_max_body_size 6m;`; most proxies' defaults are smaller than a 5 MB photo (nginx's is 1 MB), so set it either way.
 
 ## Data model
 
@@ -108,5 +114,6 @@ Deleting a session removes its nominees, photos and votes.
 
 - **Device identity is a cookie.** Each browser gets a random token signed with `DEVICE_SECRET` (`eox_device`, httpOnly, one year), issued by `/api/me` when the attendee page loads. Voting and nominating require that cookie, so a script cannot vote as a new device on every request, but a script that first calls `/api/me` still can. Only a hash is stored. Clearing cookies, using a private window, or switching browsers makes a new device, which can vote again and cannot edit earlier nominations.
 - **A lost cookie means asking a host.** Hosts can edit or delete any nomination regardless of stage.
+- **Nominations are capped** at 5 per device and 300 per session. Deleting one of your own frees a slot. Change `lib/nomination-limits.ts` for bigger events.
 - **Photos live in Postgres.** Uploads must be JPEG, PNG or WebP and at most 5 MB. The attendee app resizes them in the browser to at most 1600 px on the long edge and re-encodes as JPEG, which also strips EXIF data. Back up the database accordingly.
 - The admin passcode is a shared secret with no per-host accounts. Each wrong attempt waits 500 ms, and after 10 wrong attempts in a minute from one address (or 50 from everyone) sign-in is refused for 60 seconds. The counters live in server memory and reset on restart.
