@@ -7,6 +7,9 @@
  */
 @custom-variant compact (@media (width >= 48rem) and (pointer: fine));
 
+/* Short viewports (phones in landscape): the swipe deck sits beside its buttons. */
+@custom-variant short (@media (height < 32rem));
+
 /*
  * MAC Design System - Complete Design Tokens
  * Dark only (:root).

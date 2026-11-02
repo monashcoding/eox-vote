@@ -140,11 +140,11 @@ export function AttendeeApp(): React.JSX.Element {
 
   return (
     <main className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="border-b-2 border-border bg-card/95 px-4 py-5 backdrop-blur-xl sm:px-6">
-        <div className="mx-auto flex max-w-xl flex-col items-center space-y-2 text-center">
-          <Eyebrow>Monash Association of Coding</Eyebrow>
+      <header className="border-b-2 border-border bg-card/95 px-4 py-5 backdrop-blur-xl sm:px-6 short:py-2">
+        <div className="mx-auto flex max-w-xl flex-col items-center space-y-2 text-center short:space-y-0.5">
+          <Eyebrow className="short:hidden">Monash Association of Coding</Eyebrow>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <h1 className="text-2xl leading-tight font-semibold tracking-tight sm:text-3xl">
+            <h1 className="text-2xl leading-tight font-semibold tracking-tight sm:text-3xl short:text-xl">
               {session.name}
             </h1>
             <StagePill stage={session.stage} />
@@ -163,7 +163,7 @@ export function AttendeeApp(): React.JSX.Element {
         </div>
       </header>
 
-      <section className="animate-rise-in mx-auto w-full max-w-xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <section className="animate-rise-in mx-auto w-full max-w-xl flex-1 px-4 py-6 sm:px-6 sm:py-8 short:py-3">
         <StageBody session={session} onChanged={fetchState} />
       </section>
     </main>

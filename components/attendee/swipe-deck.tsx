@@ -227,13 +227,15 @@ export function SwipeDeck(props: {
       aria-label="Swipe deck. Use the left and right arrow keys to skip or vote."
       onKeyDown={onKeyDown}
       className={cn(
-        "animate-rise-in flex flex-col items-center gap-6 rounded-panel outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "animate-rise-in flex flex-col items-center gap-6 rounded-panel outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background short:flex-row short:justify-center",
         className
       )}
     >
-      {/* Card stack container */}
+      {/* Card stack container. Its size follows the viewport height as well as
+          the width, so the card and Skip/Vote always fit on screen together;
+          short (landscape) viewports put the buttons beside the card. */}
       <div
-        className="relative aspect-3/4 w-full max-w-xs select-none sm:max-w-sm"
+        className="relative aspect-3/4 w-[min(100%,max(12rem,calc((100svh-23rem)*0.75)))] max-w-xs select-none sm:max-w-sm short:h-[max(10rem,calc(100svh-11.5rem))] short:w-auto short:max-w-none"
         style={{ touchAction: "pan-y" }}
       >
         {visibleCards.map((card, index) => {
@@ -353,7 +355,7 @@ export function SwipeDeck(props: {
       </div>
 
       {/* Control buttons: same actions as the gestures */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-6 short:flex-col">
         <Button
           type="button"
           variant="outline"

@@ -205,7 +205,7 @@ export function VotingView({
 
       <ErrorNote message={error} className="mt-4" />
 
-      <TabsContent value={Tab.Swipe} className="mt-6">
+      <TabsContent value={Tab.Swipe} className="mt-6 short:mt-3">
         {ordered.length === 0 ? (
           <EmptyState
             mascot={Mascot.Wave}
@@ -213,12 +213,12 @@ export function VotingView({
             description="Nobody was nominated in this session."
           />
         ) : cards.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-4 short:space-y-2">
             <div className="text-center">
               <Eyebrow>
                 {cards.length} of {ordered.length} left
               </Eyebrow>
-              <p className="mt-1 text-sm text-muted">
+              <p className="mt-1 text-sm text-muted short:hidden">
                 Swipe right to vote, left to skip.
               </p>
             </div>
