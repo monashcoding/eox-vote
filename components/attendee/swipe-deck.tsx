@@ -8,7 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Check, Undo2, X } from "lucide-react";
+import { Heart, Undo2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { createPortal } from "react-dom";
@@ -479,7 +479,7 @@ export function SwipeDeck(props: {
                   style={{ opacity: overlayOpacity }}
                 >
                   <Badge variant="success" tag>
-                    <Check aria-hidden />
+                    <Heart aria-hidden fill="currentColor" />
                     Vote
                   </Badge>
                 </div>
@@ -536,7 +536,7 @@ export function SwipeDeck(props: {
             onClick={() => topCard && startFlyOut(topCard, "right")}
             className="size-14 compact:size-11"
           >
-            <Check className="size-6" />
+            <Heart className="size-6" fill="currentColor" />
           </Button>
         </div>
       </div>

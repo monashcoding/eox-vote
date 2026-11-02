@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, Plus } from "lucide-react";
+import { Heart } from "lucide-react";
 import type { PublicNomineeDto } from "@/lib/api-types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,7 @@ export function VoteGrid({
                 onClick={() => onToggle(nominee.id, !voted)}
                 className="mt-auto w-full"
               >
-                {voted ? <Check /> : <Plus />}
+                <Heart fill={voted ? "currentColor" : "none"} />
                 {voted ? "Voted" : "Vote"}
               </Button>
             </div>
