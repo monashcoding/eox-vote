@@ -120,9 +120,12 @@ export function AttendeeApp(): React.JSX.Element {
       <main className="safe-t safe-b flex min-h-dvh flex-col items-center justify-center px-4 text-center sm:px-6">
         <Eyebrow>Monash Association of Coding</Eyebrow>
         <h1 className="mt-4 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
-          Best{" "}
-          <span className="inline-block rounded-tag bg-primary px-2 py-0.5 text-primary-foreground">
-            dressed
+          <span className="block">EOX 2026</span>{" "}
+          <span className="mt-2 block">
+            Best{" "}
+            <span className="inline-block rounded-tag bg-primary px-2 py-0.5 text-primary-foreground">
+              Dressed
+            </span>
           </span>
         </h1>
         <p className="mt-6 text-base text-muted compact:text-sm">
