@@ -11,7 +11,12 @@ import {
 import { Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { decideSwipe, type SwipeDirection } from "@/lib/client/swipe-decision";
+import { createPortal } from "react-dom";
+import {
+  decideSwipe,
+  swipeDistanceThreshold,
+  type SwipeDirection,
+} from "@/lib/client/swipe-decision";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -40,6 +45,15 @@ function getReducedMotionSnapshot(): boolean {
 
 function getReducedMotionServerSnapshot(): boolean {
   return false;
+}
+
+/* The glow portal needs document.body, so it renders after hydration only. */
+function subscribeNever(): () => void {
+  return () => {};
+}
+
+function getClientSnapshot(): boolean {
+  return true;
 }
 
 /* ------------------------------------------------------------------ */
@@ -109,6 +123,13 @@ export function SwipeDeck(props: {
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [flight, setFlight] = useState<FlightState | null>(null);
+  // Distance at which the glow reaches full strength: the swipe threshold.
+  const [dragThreshold, setDragThreshold] = useState(swipeDistanceThreshold(0));
+  const isClient = useSyncExternalStore(
+    subscribeNever,
+    getClientSnapshot,
+    getReducedMotionServerSnapshot,
+  );
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const pileRef = useRef<HTMLDivElement | null>(null);
@@ -199,6 +220,9 @@ export function SwipeDeck(props: {
       pointerIdRef.current = e.pointerId;
       dragOriginRef.current = { x: e.clientX, time: Date.now() };
       setIsDragging(true);
+      setDragThreshold(
+        swipeDistanceThreshold(cardRef.current?.offsetWidth ?? 0)
+      );
       setDragOffset(0);
     },
     [disabled, activeFlight],
@@ -287,6 +311,25 @@ export function SwipeDeck(props: {
     : 1;
 
   const isActionDisabled = disabled || activeFlight !== null;
+
+  /*
+   * Edge glow: red on the left while dragging left, green on the right while
+   * dragging right, full strength at the swipe threshold. A committed swipe
+   * (gesture, button or arrow key) holds it during the fly-out, then it fades.
+   */
+  let glowSide: SwipeDirection | null = null;
+  let glowOpacity = 0;
+  if (activeFlight) {
+    glowSide = activeFlight.direction;
+    glowOpacity = 1;
+  } else if (isDragging && dragOffset !== 0) {
+    glowSide = dragOffset > 0 ? "right" : "left";
+    glowOpacity = Math.min(1, Math.abs(dragOffset) / dragThreshold);
+  }
+  const glowTransition =
+    isDragging || reducedMotion
+      ? "none"
+      : `opacity ${FLY_DURATION_MS}ms ${EASE_REVEAL}`;
 
   return (
     <div
@@ -438,6 +481,33 @@ export function SwipeDeck(props: {
           <Check className="size-6" />
         </Button>
       </div>
+
+      {/* Portalled to <body>: the deck is a size container, which would trap
+          fixed-position children inside it. */}
+      {isClient &&
+        createPortal(
+          <>
+            <div
+              aria-hidden
+              data-swipe-glow="left"
+              className="pointer-events-none fixed inset-y-0 left-0 z-50 w-[calc(5rem+env(safe-area-inset-left,0px))] bg-linear-to-r from-danger/45 to-transparent"
+              style={{
+                opacity: glowSide === "left" ? glowOpacity : 0,
+                transition: glowTransition,
+              }}
+            />
+            <div
+              aria-hidden
+              data-swipe-glow="right"
+              className="pointer-events-none fixed inset-y-0 right-0 z-50 w-[calc(5rem+env(safe-area-inset-right,0px))] bg-linear-to-l from-success/45 to-transparent"
+              style={{
+                opacity: glowSide === "right" ? glowOpacity : 0,
+                transition: glowTransition,
+              }}
+            />
+          </>,
+          document.body
+        )}
     </div>
   );
 }

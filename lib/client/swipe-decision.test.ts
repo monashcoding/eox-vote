@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { decideSwipe } from "./swipe-decision.ts";
+import { decideSwipe, swipeDistanceThreshold } from "./swipe-decision.ts";
 
 // A slow drag: 1000 ms is far below flick speed for any distance tested here.
 const SLOW = 1000;
@@ -42,5 +42,13 @@ describe("decideSwipe", () => {
     assert.equal(decideSwipe(19, 400, 5), null);
     assert.equal(decideSwipe(0, 400, 0), null);
     assert.equal(decideSwipe(5, 400, 0), null);
+  });
+});
+
+describe("swipeDistanceThreshold", () => {
+  it("is 110 px on wide cards and 30% of the width on narrow ones", () => {
+    assert.equal(swipeDistanceThreshold(400), 110);
+    assert.equal(swipeDistanceThreshold(200), 60);
+    assert.equal(swipeDistanceThreshold(0), 110);
   });
 });

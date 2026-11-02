@@ -5,6 +5,13 @@ const SWIPE_DISTANCE_RATIO = 0.3; // of the card width, for narrow cards
 const SWIPE_VELOCITY_THRESHOLD = 0.5; // px/ms (500 px/s)
 const MIN_FLICK_DISTANCE = 20; // px, so a quick tap never counts as a flick
 
+/** Drag distance that dismisses a card: 110 px, or 30% of a narrow card's width. */
+export function swipeDistanceThreshold(cardWidth: number): number {
+  return cardWidth > 0
+    ? Math.min(SWIPE_DISTANCE_THRESHOLD, cardWidth * SWIPE_DISTANCE_RATIO)
+    : SWIPE_DISTANCE_THRESHOLD;
+}
+
 /**
  * Decides whether a finished drag dismisses the card to the left or right,
  * or returns it to the centre (null).
@@ -15,12 +22,7 @@ export function decideSwipe(
   elapsedMs: number,
 ): SwipeDirection | null {
   const absDx = Math.abs(dx);
-  const threshold =
-    cardWidth > 0
-      ? Math.min(SWIPE_DISTANCE_THRESHOLD, cardWidth * SWIPE_DISTANCE_RATIO)
-      : SWIPE_DISTANCE_THRESHOLD;
-
-  const isDistanceThreshold = absDx >= threshold;
+  const isDistanceThreshold = absDx >= swipeDistanceThreshold(cardWidth);
   const velocity = elapsedMs > 0 ? absDx / elapsedMs : 0;
   const isFlick =
     absDx >= MIN_FLICK_DISTANCE && velocity >= SWIPE_VELOCITY_THRESHOLD;
