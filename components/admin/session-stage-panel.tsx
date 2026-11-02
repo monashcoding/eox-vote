@@ -259,7 +259,7 @@ export function SessionStagePanel({
                   key={s.key}
                   aria-current={isCurrent ? "step" : undefined}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-control border-2 p-3 text-sm transition-colors duration-150",
+                    "flex items-center gap-2 rounded-control border-2 px-2.5 py-3 text-sm transition-colors duration-150",
                     isCurrent
                       ? "border-primary bg-accent/70 font-semibold text-foreground"
                       : isPast
