@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { Stage, type AdminNomineeDto, type PublicNomineeDto } from "./api-types";
 import { db, type DbTransaction } from "./db";
-import { nomineePhotos, nominees, votes } from "./db/schema";
+import { nomineePhotos, nominees, sessions, votes } from "./db/schema";
 import { HttpError } from "./http";
 import { toAdminNomineeDto, toPublicNomineeDto } from "./nominees";
 import type { NomineeForm } from "./photos";
@@ -21,6 +21,46 @@ async function requireNominatingSession(tx: DbTransaction): Promise<string> {
     throw new HttpError(409, NOT_NOMINATING);
   }
   return session.id;
+}
+
+/**
+ * Cheap unlocked pre-check, run before an upload body is read so closed
+ * stages and other devices' entries never cost a buffered body. The locked
+ * transaction repeats every check, so a stale answer here is harmless.
+ */
+export async function assertCanNominate(
+  ownerTokenHash: string,
+  nomineeId?: string
+): Promise<void> {
+  const sessionId = await getCurrentSessionId();
+  if (!sessionId) {
+    throw new HttpError(409, NOT_NOMINATING);
+  }
+  const [session] = await db
+    .select({ stage: sessions.stage })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+  if (session?.stage !== Stage.Nominating) {
+    throw new HttpError(409, NOT_NOMINATING);
+  }
+  if (nomineeId === undefined) {
+    return;
+  }
+  const [existing] = await db
+    .select({
+      sessionId: nominees.sessionId,
+      ownerTokenHash: nominees.ownerTokenHash,
+    })
+    .from(nominees)
+    .where(eq(nominees.id, nomineeId))
+    .limit(1);
+  if (!existing || existing.sessionId !== sessionId) {
+    throw new HttpError(404, "Nomination not found");
+  }
+  if (existing.ownerTokenHash !== ownerTokenHash) {
+    throw new HttpError(403, "You can only edit your own nominations");
+  }
 }
 
 export async function createNomination(

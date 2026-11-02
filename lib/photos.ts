@@ -1,7 +1,10 @@
 import { z } from "zod";
+import { readBodyWithLimit } from "./body-limit";
 import { HttpError } from "./http";
 
 export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+/** Whole multipart body: the photo plus room for the names and part headers. */
+export const MAX_NOMINEE_FORM_BYTES = MAX_PHOTO_BYTES + 512 * 1024;
 
 export interface ParsedPhoto {
   contentType: string;
@@ -70,11 +73,21 @@ export interface NomineeForm {
 /**
  * Reads a multipart nominee body. Every field is optional here; callers decide
  * which are required. Present names are validated, a present photo is parsed.
+ * Bodies without a `content-length` or above `MAX_NOMINEE_FORM_BYTES` are
+ * rejected with 413 before they are buffered.
  */
 export async function parseNomineeForm(request: Request): Promise<NomineeForm> {
+  const body = await readBodyWithLimit(request, MAX_NOMINEE_FORM_BYTES);
+  if (!body) {
+    throw new HttpError(413, "Photo must be 5 MB or smaller");
+  }
+
   let form: FormData;
   try {
-    form = await request.formData();
+    const contentType = request.headers.get("content-type") ?? "";
+    form = await new Response(body, {
+      headers: { "content-type": contentType },
+    }).formData();
   } catch {
     throw new HttpError(400, "Expected a multipart form body");
   }
