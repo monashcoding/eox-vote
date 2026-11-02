@@ -5,7 +5,7 @@ import { AdminGate } from "@/components/admin/admin-gate";
 import { SessionDetailView } from "@/components/admin/session-detail-view";
 
 export const metadata: Metadata = {
-  title: "Session | MAC best dressed",
+  title: "Session | EOX 2026 Best Dressed",
   robots: {
     index: false,
     follow: false,
