@@ -9,7 +9,7 @@ import {
   Stage,
   StageMoveAction,
 } from "@/lib/api-types";
-import { api, ApiError } from "@/lib/client/api";
+import { ApiError } from "@/lib/client/api";
 import { useCountdown } from "@/lib/client/use-countdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { ErrorNote } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Eyebrow, Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useAdminApi } from "./admin-gate";
 
 interface SessionStagePanelProps {
   session: AdminSessionDetailDto;
@@ -66,6 +67,7 @@ export function SessionStagePanel({
   session,
   onRefresh,
 }: SessionStagePanelProps): React.JSX.Element {
+  const adminApi = useAdminApi();
   const countdown = useCountdown(session.timer, session.serverNow);
 
   const [loading, setLoading] = React.useState(false);
@@ -92,7 +94,7 @@ export function SessionStagePanel({
     setLoading(true);
     setError(null);
     try {
-      await api<AdminSessionDetailDto>(
+      await adminApi<AdminSessionDetailDto>(
         `/api/admin/sessions/${session.id}/control`,
         {
           method: "POST",
@@ -135,7 +137,7 @@ export function SessionStagePanel({
     setLoading(true);
     setError(null);
     try {
-      await api<AdminSessionDetailDto>(`/api/admin/sessions/${session.id}`, {
+      await adminApi<AdminSessionDetailDto>(`/api/admin/sessions/${session.id}`, {
         method: "PATCH",
         body: JSON.stringify({ autoAdvance: checked }),
       });
