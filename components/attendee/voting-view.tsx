@@ -17,6 +17,7 @@ import {
 } from "@/lib/client/deck-storage";
 import { errorMessage } from "@/lib/client/error-message";
 import { usePolling } from "@/lib/client/use-polling";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
@@ -32,6 +33,10 @@ const Tab = {
 } as const;
 
 type Tab = (typeof Tab)[keyof typeof Tab];
+
+/** Bottom bar triggers fill their half: no rounding, border or inset gap. */
+const TAB_TRIGGER_CLASS =
+  "rounded-none border-0 focus-visible:ring-inset data-active:bg-accent";
 
 function fullName(nominee: PublicNomineeDto): string {
   return `${nominee.firstName} ${nominee.lastName}`;
@@ -206,14 +211,9 @@ export function VotingView({
       onValueChange={(value) => setTab(value as Tab)}
       className="flex flex-1 flex-col"
     >
-      <TabsList>
-        <TabsTrigger value={Tab.Swipe}>Swipe</TabsTrigger>
-        <TabsTrigger value={Tab.All}>All ({ordered.length})</TabsTrigger>
-      </TabsList>
+      {!deckShown && <ErrorNote message={error} className="mb-4" />}
 
-      {!deckShown && <ErrorNote message={error} className="mt-4" />}
-
-      <TabsContent value={Tab.Swipe} className="mt-4 flex flex-1 flex-col sm:mt-6 short:mt-3">
+      <TabsContent value={Tab.Swipe} className="mt-0 flex flex-1 flex-col">
         {ordered.length === 0 ? (
           <EmptyState
             mascot={Mascot.Wave}
@@ -268,7 +268,7 @@ export function VotingView({
         )}
       </TabsContent>
 
-      <TabsContent value={Tab.All} className="mt-6">
+      <TabsContent value={Tab.All} className="mt-0">
         {ordered.length === 0 ? (
           <EmptyState
             mascot={Mascot.Wave}
@@ -279,6 +279,31 @@ export function VotingView({
           grid
         )}
       </TabsContent>
+
+      {/*
+        Bottom tab bar. Under the deck it ends the one-screen column, above
+        the shell's safe-area padding. Over the scrolling lists it sticks to
+        the bottom of the screen; its padding covers the safe area there and
+        the matching negative margin keeps the in-flow spacing unchanged.
+      */}
+      <div
+        className={cn(
+          "mt-4 sm:mt-6 short:mt-3",
+          !deckShown &&
+            "sticky bottom-0 z-20 -mb-[calc(env(safe-area-inset-bottom,0px)_+_0.75rem)] bg-background pt-3 pb-[calc(env(safe-area-inset-bottom,0px)_+_0.75rem)]"
+        )}
+      >
+        {/* No inner padding or selection border: the active tab is the
+            lighter fill with bold white text. */}
+        <TabsList className="overflow-hidden p-0">
+          <TabsTrigger value={Tab.Swipe} className={TAB_TRIGGER_CLASS}>
+            Swipe
+          </TabsTrigger>
+          <TabsTrigger value={Tab.All} className={TAB_TRIGGER_CLASS}>
+            All ({ordered.length})
+          </TabsTrigger>
+        </TabsList>
+      </div>
     </Tabs>
   );
 }
