@@ -1,13 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Lock } from "lucide-react";
 import { api, ApiError } from "@/lib/client/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ErrorNote } from "@/components/ui/empty-state";
 import { Eyebrow, Label } from "@/components/ui/label";
+import { MacLogo } from "@/components/ui/mac-logo";
 
 interface PasscodeFormProps {
   onSuccess: () => void;
@@ -50,9 +50,7 @@ export function PasscodeForm({
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <Card className="animate-rise-in w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <div className="mb-3 flex size-12 items-center justify-center rounded-full border-2 border-border bg-surface-soft text-foreground">
-            <Lock className="size-5" />
-          </div>
+          <MacLogo size={56} className="mb-3" />
           <Eyebrow>Host access</Eyebrow>
           <CardTitle className="text-xl">Host console</CardTitle>
         </CardHeader>

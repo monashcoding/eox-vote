@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/label";
+import { MacLogo } from "@/components/ui/mac-logo";
 
 interface AdminShellProps {
   children?: React.ReactNode;
@@ -31,11 +32,14 @@ export function AdminShell({
     <div className="safe-b flex min-h-dvh flex-col bg-background text-foreground">
       <header className="safe-t sticky top-0 z-40 border-b-2 border-border bg-card/95 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 flex-col leading-tight">
-            <Eyebrow>EOX 2026 Best Dressed</Eyebrow>
-            <h1 className="truncate text-base font-semibold text-foreground">
-              Host console
-            </h1>
+          <div className="flex min-w-0 items-center gap-3">
+            <MacLogo size={40} />
+            <div className="flex min-w-0 flex-col leading-tight">
+              <Eyebrow>EOX 2026 Best Dressed</Eyebrow>
+              <h1 className="truncate text-base font-semibold text-foreground">
+                Host console
+              </h1>
+            </div>
           </div>
           <Button
             variant="ghost"
