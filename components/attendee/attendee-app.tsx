@@ -7,6 +7,8 @@ import { formatCountdownCopy, useCountdown } from "@/lib/client/use-countdown";
 import { cn } from "@/lib/utils";
 import { usePolling } from "@/lib/client/use-polling";
 import { StagePill } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 import { NominatingView } from "./nominating-view";
 import { ResultsView } from "./results-view";
@@ -58,15 +60,27 @@ function CountdownText({
   );
 }
 
+/** Small note shown while a poll fails but the last good state is still on screen. */
+function OfflineNote(): React.JSX.Element {
+  return (
+    <p role="status" className="text-sm font-medium text-danger">
+      Can&apos;t reach the server. Retrying…
+    </p>
+  );
+}
+
 export function AttendeeApp(): React.JSX.Element {
   const [state, setState] = React.useState<PublicStateDto | null>(null);
+  const [offline, setOffline] = React.useState(false);
 
   const fetchState = React.useCallback(async () => {
     try {
       const res = await api<PublicStateDto>("/api/state");
       setState(res);
+      setOffline(false);
     } catch (err: unknown) {
       console.error("Failed to fetch attendee state:", err);
+      setOffline(true);
     }
   }, []);
 
@@ -75,6 +89,30 @@ export function AttendeeApp(): React.JSX.Element {
 
   const session = state?.session;
   const countdown = useCountdown(session?.timer, state?.serverNow);
+
+  if (!state && offline) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center px-4 sm:px-6">
+        <EmptyState
+          as="h1"
+          mascot={Mascot.Sad}
+          title="Could not reach the server"
+          description="Check your connection. We will keep trying in the background."
+          action={
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full md:w-auto"
+              onClick={() => void fetchState()}
+            >
+              Try again
+            </Button>
+          }
+          className="w-full max-w-md"
+        />
+      </main>
+    );
+  }
 
   if (!session || session.stage === Stage.Pending) {
     return (
@@ -89,6 +127,11 @@ export function AttendeeApp(): React.JSX.Element {
         <p className="mt-6 text-base text-muted md:text-sm">
           Waiting for host to start a session
         </p>
+        {offline && (
+          <div className="mt-3">
+            <OfflineNote />
+          </div>
+        )}
       </main>
     );
   }
@@ -116,6 +159,7 @@ export function AttendeeApp(): React.JSX.Element {
               <CountdownText copy={countdownCopy} formatted={countdown.formatted} />
             </p>
           )}
+          {offline && <OfflineNote />}
         </div>
       </header>
 
