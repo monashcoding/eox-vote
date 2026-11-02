@@ -2,5 +2,11 @@
   "name": "eox-vote",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "pnpm@10.33.2"
+  "scripts": {
+    "prepare": "husky"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
 }
