@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AdminGate } from "@/components/admin/admin-gate";
+import { SessionsList } from "@/components/admin/sessions-list";
 
 export const metadata: Metadata = {
   title: "Admin Console | MAC Best Dressed",
@@ -10,5 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPage() {
-  return <AdminGate />;
+  return (
+    <AdminGate>
+      <SessionsList />
+    </AdminGate>
+  );
 }

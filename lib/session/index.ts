@@ -1,0 +1,239 @@
+import { eq, sql } from "drizzle-orm";
+import {
+  AdminSessionDetailDto,
+  AdminSessionSummaryDto,
+  Stage,
+  TimerDto,
+} from "../api-types";
+import { db } from "../db";
+import { appSettings, nominees, sessions, votes } from "../db/schema";
+import { HttpError } from "../http";
+
+export function toTimerDto(
+  timerEndsAt: Date | null,
+  timerRemainingMs: number | null
+): TimerDto {
+  return {
+    endsAt: timerEndsAt ? timerEndsAt.getTime() : null,
+    remainingMs: timerRemainingMs ?? null,
+  };
+}
+
+export function toAdminSessionSummaryDto(
+  session: typeof sessions.$inferSelect,
+  currentSessionId: string | null,
+  nomineeCount: number,
+  voteCount: number
+): AdminSessionSummaryDto {
+  return {
+    id: session.id,
+    name: session.name,
+    stage: session.stage as Stage,
+    isCurrent: session.id === currentSessionId,
+    nomineeCount,
+    voteCount,
+    createdAt: session.createdAt.getTime(),
+    startedAt: session.startedAt ? session.startedAt.getTime() : null,
+    finishedAt: session.finishedAt ? session.finishedAt.getTime() : null,
+  };
+}
+
+export function toAdminSessionDetailDto(
+  session: typeof sessions.$inferSelect,
+  currentSessionId: string | null
+): AdminSessionDetailDto {
+  return {
+    id: session.id,
+    name: session.name,
+    stage: session.stage as Stage,
+    isCurrent: session.id === currentSessionId,
+    nominatingMinutes: session.nominatingMinutes,
+    votingMinutes: session.votingMinutes,
+    autoAdvance: session.autoAdvance,
+    timer: toTimerDto(session.timerEndsAt, session.timerRemainingMs),
+    createdAt: session.createdAt.getTime(),
+    startedAt: session.startedAt ? session.startedAt.getTime() : null,
+    finishedAt: session.finishedAt ? session.finishedAt.getTime() : null,
+    serverNow: Date.now(),
+  };
+}
+
+export async function getCurrentSessionId(): Promise<string | null> {
+  const [settings] = await db
+    .select({ currentSessionId: appSettings.currentSessionId })
+    .from(appSettings)
+    .where(eq(appSettings.id, 1))
+    .limit(1);
+
+  return settings?.currentSessionId ?? null;
+}
+
+export async function setCurrentSession(
+  sessionId: string | null
+): Promise<{ currentSessionId: string | null }> {
+  if (sessionId !== null) {
+    const [existing] = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(eq(sessions.id, sessionId))
+      .limit(1);
+
+    if (!existing) {
+      throw new HttpError(404, "Session not found");
+    }
+  }
+
+  await db
+    .update(appSettings)
+    .set({ currentSessionId: sessionId })
+    .where(eq(appSettings.id, 1));
+
+  return { currentSessionId: sessionId };
+}
+
+export async function listAdminSessions(): Promise<{
+  sessions: AdminSessionSummaryDto[];
+  currentSessionId: string | null;
+}> {
+  const currentSessionId = await getCurrentSessionId();
+
+  // Query sessions with aggregated counts of nominees and votes
+  const rows = await db
+    .select({
+      session: sessions,
+      nomineeCount: sql<number>`count(distinct ${nominees.id})::int`,
+      voteCount: sql<number>`count(${votes.nomineeId})::int`,
+    })
+    .from(sessions)
+    .leftJoin(nominees, eq(nominees.sessionId, sessions.id))
+    .leftJoin(votes, eq(votes.nomineeId, nominees.id))
+    .groupBy(sessions.id)
+    .orderBy(sql`${sessions.createdAt} desc`);
+
+  const summaryList = rows.map((r) =>
+    toAdminSessionSummaryDto(
+      r.session,
+      currentSessionId,
+      r.nomineeCount,
+      r.voteCount
+    )
+  );
+
+  return {
+    sessions: summaryList,
+    currentSessionId,
+  };
+}
+
+export async function getAdminSessionDetail(
+  id: string
+): Promise<AdminSessionDetailDto> {
+  const currentSessionId = await getCurrentSessionId();
+
+  const [session] = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.id, id))
+    .limit(1);
+
+  if (!session) {
+    throw new HttpError(404, "Session not found");
+  }
+
+  return toAdminSessionDetailDto(session, currentSessionId);
+}
+
+export interface CreateSessionInput {
+  name: string;
+  nominatingMinutes?: number;
+  votingMinutes?: number;
+  autoAdvance?: boolean;
+}
+
+export async function createAdminSession(
+  input: CreateSessionInput
+): Promise<AdminSessionDetailDto> {
+  const name = input.name.trim();
+  if (name.length < 1 || name.length > 80) {
+    throw new HttpError(400, "Name must be between 1 and 80 characters");
+  }
+
+  const [inserted] = await db
+    .insert(sessions)
+    .values({
+      name,
+      nominatingMinutes: input.nominatingMinutes ?? 30,
+      votingMinutes: input.votingMinutes ?? 45,
+      autoAdvance: input.autoAdvance ?? false,
+    })
+    .returning();
+
+  const currentSessionId = await getCurrentSessionId();
+  return toAdminSessionDetailDto(inserted, currentSessionId);
+}
+
+export interface UpdateSessionInput {
+  name?: string;
+  nominatingMinutes?: number;
+  votingMinutes?: number;
+  autoAdvance?: boolean;
+}
+
+export async function updateAdminSession(
+  id: string,
+  input: UpdateSessionInput
+): Promise<AdminSessionDetailDto> {
+  const updates: Partial<typeof sessions.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (name.length < 1 || name.length > 80) {
+      throw new HttpError(400, "Name must be between 1 and 80 characters");
+    }
+    updates.name = name;
+  }
+
+  if (input.nominatingMinutes !== undefined) {
+    if (input.nominatingMinutes < 0 || input.nominatingMinutes > 600) {
+      throw new HttpError(400, "Nominating minutes must be between 0 and 600");
+    }
+    updates.nominatingMinutes = input.nominatingMinutes;
+  }
+
+  if (input.votingMinutes !== undefined) {
+    if (input.votingMinutes < 0 || input.votingMinutes > 600) {
+      throw new HttpError(400, "Voting minutes must be between 0 and 600");
+    }
+    updates.votingMinutes = input.votingMinutes;
+  }
+
+  if (input.autoAdvance !== undefined) {
+    updates.autoAdvance = input.autoAdvance;
+  }
+
+  const [updated] = await db
+    .update(sessions)
+    .set(updates)
+    .where(eq(sessions.id, id))
+    .returning();
+
+  if (!updated) {
+    throw new HttpError(404, "Session not found");
+  }
+
+  const currentSessionId = await getCurrentSessionId();
+  return toAdminSessionDetailDto(updated, currentSessionId);
+}
+
+export async function deleteAdminSession(id: string): Promise<void> {
+  const deleted = await db
+    .delete(sessions)
+    .where(eq(sessions.id, id))
+    .returning({ id: sessions.id });
+
+  if (deleted.length === 0) {
+    throw new HttpError(404, "Session not found");
+  }
+}
