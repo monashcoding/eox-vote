@@ -1,9 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
 import { Stage, type AdminNomineeDto, type PublicNomineeDto } from "./api-types";
-import { db, type DbTransaction } from "./db";
+import { db, type DbReader, type DbTransaction } from "./db";
 import { nomineePhotos, nominees, sessions, votes } from "./db/schema";
 import { HttpError } from "./http";
 import { toAdminNomineeDto, toPublicNomineeDto } from "./nominees";
+import { nominationLimitError } from "./nomination-limits";
 import type { NomineeForm } from "./photos";
 import { getCurrentSessionId, syncSessionInTx } from "./session";
 import { invalidatePublicState } from "./session/public-state";
@@ -12,7 +13,7 @@ const NOT_NOMINATING = "Nominations are not open right now";
 
 /** Locks and syncs the current session, requiring the nominating stage. */
 async function requireNominatingSession(tx: DbTransaction): Promise<string> {
-  const sessionId = await getCurrentSessionId();
+  const sessionId = await getCurrentSessionId(tx);
   if (!sessionId) {
     throw new HttpError(409, NOT_NOMINATING);
   }
@@ -23,10 +24,30 @@ async function requireNominatingSession(tx: DbTransaction): Promise<string> {
   return session.id;
 }
 
+/** Throws 409 when the device or the session has reached its nomination cap. */
+async function assertUnderNominationLimits(
+  executor: DbReader,
+  sessionId: string,
+  ownerTokenHash: string
+): Promise<void> {
+  const [counts] = await executor
+    .select({
+      session: sql<number>`count(*)::int`,
+      device: sql<number>`(count(*) filter (where ${nominees.ownerTokenHash} = ${ownerTokenHash}))::int`,
+    })
+    .from(nominees)
+    .where(eq(nominees.sessionId, sessionId));
+  const message = nominationLimitError(counts.device, counts.session);
+  if (message) {
+    throw new HttpError(409, message);
+  }
+}
+
 /**
  * Cheap unlocked pre-check, run before an upload body is read so closed
- * stages and other devices' entries never cost a buffered body. The locked
- * transaction repeats every check, so a stale answer here is harmless.
+ * stages, full sessions and other devices' entries never cost a buffered
+ * body. The locked transaction repeats every check, so a stale answer here is
+ * harmless. Without `nomineeId` it checks a new nomination, with one an edit.
  */
 export async function assertCanNominate(
   ownerTokenHash: string,
@@ -45,6 +66,7 @@ export async function assertCanNominate(
     throw new HttpError(409, NOT_NOMINATING);
   }
   if (nomineeId === undefined) {
+    await assertUnderNominationLimits(db, sessionId, ownerTokenHash);
     return;
   }
   const [existing] = await db
@@ -77,6 +99,8 @@ export async function createNomination(
 
   const created = await db.transaction(async (tx) => {
     const sessionId = await requireNominatingSession(tx);
+    // The session row lock serialises creates, so the counts cannot race.
+    await assertUnderNominationLimits(tx, sessionId, ownerTokenHash);
     const [row] = await tx
       .insert(nominees)
       .values({ sessionId, firstName, lastName, ownerTokenHash })
