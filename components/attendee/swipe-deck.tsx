@@ -153,6 +153,10 @@ export function SwipeDeck(props: {
   const shownIdsRef = useRef<ReadonlySet<string> | null>(null);
   const pointerIdRef = useRef<number | null>(null);
   const dragOriginRef = useRef({ x: 0, y: 0, time: 0 });
+  // Set by a tap's pointerup; the click that follows opens the photo. Opening
+  // on pointerup instead would let that click land on the new preview and
+  // close it straight away.
+  const tapRef = useRef(false);
 
   /*
    * Undo: the card put back flies in from the side it left by (a fade under
@@ -260,6 +264,7 @@ export function SwipeDeck(props: {
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (disabled || activeFlight !== null || e.button !== 0) return;
+      tapRef.current = false;
       e.currentTarget.setPointerCapture(e.pointerId);
       pointerIdRef.current = e.pointerId;
       dragOriginRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
@@ -299,8 +304,8 @@ export function SwipeDeck(props: {
       const elapsed = Date.now() - dragOriginRef.current.time;
 
       if (onOpenCard && topCard && isTap(dx, dy, elapsed)) {
+        tapRef.current = true;
         setDragOffset(0);
-        onOpenCard(topCard);
         return;
       }
 
@@ -323,11 +328,20 @@ export function SwipeDeck(props: {
         e.currentTarget.releasePointerCapture(e.pointerId);
       }
       pointerIdRef.current = null;
+      tapRef.current = false;
       setIsDragging(false);
       setDragOffset(0);
     },
     [],
   );
+
+  const onCardClick = useCallback(() => {
+    if (!tapRef.current) return;
+    tapRef.current = false;
+    if (onOpenCard && topCard && !disabled && activeFlight === null) {
+      onOpenCard(topCard);
+    }
+  }, [onOpenCard, topCard, disabled, activeFlight]);
 
   /* ---- Keyboard controls ---- */
   const onKeyDown = useCallback(
@@ -472,6 +486,7 @@ export function SwipeDeck(props: {
               onPointerMove={isTop ? onPointerMove : undefined}
               onPointerUp={isTop ? onPointerUp : undefined}
               onPointerCancel={isTop ? onPointerCancel : undefined}
+              onClick={isTop ? onCardClick : undefined}
               onTransitionEnd={isTop ? handleTransitionEnd : undefined}
               style={{
                 transform,
