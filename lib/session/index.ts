@@ -8,7 +8,7 @@ import {
 } from "../api-types";
 import { applyAutoAdvance, applyControl, canAutoAdvance } from "./engine";
 import { invalidatePublicState } from "./public-state";
-import { db } from "../db";
+import { db, type DbTransaction } from "../db";
 import { appSettings, nominees, sessions, votes } from "../db/schema";
 import { HttpError } from "../http";
 
@@ -129,54 +129,64 @@ export async function listAdminSessions(): Promise<{
   };
 }
 
+/**
+ * Locks the session row (`for update`) inside `tx`, applies any due
+ * auto-advance and returns the fresh row. The lock is held until `tx` ends, so
+ * callers can check the stage and mutate in the same transaction.
+ */
+export async function syncSessionInTx(
+  tx: DbTransaction,
+  id: string
+): Promise<typeof sessions.$inferSelect> {
+  const [session] = await tx
+    .select()
+    .from(sessions)
+    .where(eq(sessions.id, id))
+    .for("update");
+
+  if (!session) {
+    throw new HttpError(404, "Session not found");
+  }
+
+  const now = Date.now();
+  let current = session;
+  let changed = false;
+  let iterations = 0;
+
+  while (canAutoAdvance(current, now) && iterations < 5) {
+    current = {
+      ...current,
+      ...applyAutoAdvance(current, now),
+    };
+    changed = true;
+    iterations++;
+  }
+
+  if (!changed) {
+    return session;
+  }
+
+  const [updated] = await tx
+    .update(sessions)
+    .set({
+      stage: current.stage,
+      startedAt: current.startedAt ? new Date(current.startedAt) : null,
+      finishedAt: current.finishedAt ? new Date(current.finishedAt) : null,
+      timerEndsAt: current.timerEndsAt ? new Date(current.timerEndsAt) : null,
+      timerRemainingMs: current.timerRemainingMs,
+      revealedCount: current.revealedCount,
+      updatedAt: new Date(),
+    })
+    .where(eq(sessions.id, id))
+    .returning();
+
+  return updated;
+}
+
 export async function syncSession(
   id: string
 ): Promise<typeof sessions.$inferSelect> {
-  return await db.transaction(async (tx) => {
-    const [session] = await tx
-      .select()
-      .from(sessions)
-      .where(eq(sessions.id, id))
-      .for("update");
-
-    if (!session) {
-      throw new HttpError(404, "Session not found");
-    }
-
-    const now = Date.now();
-    let current = session;
-    let changed = false;
-    let iterations = 0;
-
-    while (canAutoAdvance(current, now) && iterations < 5) {
-      current = {
-        ...current,
-        ...applyAutoAdvance(current, now),
-      };
-      changed = true;
-      iterations++;
-    }
-
-    if (!changed) {
-      return session;
-    }
-
-    const [updated] = await tx
-      .update(sessions)
-      .set({
-        stage: current.stage,
-        startedAt: current.startedAt ? new Date(current.startedAt) : null,
-        finishedAt: current.finishedAt ? new Date(current.finishedAt) : null,
-        timerEndsAt: current.timerEndsAt ? new Date(current.timerEndsAt) : null,
-        timerRemainingMs: current.timerRemainingMs,
-        revealedCount: current.revealedCount,
-        updatedAt: new Date(),
-      })
-      .where(eq(sessions.id, id))
-      .returning();
-
-    return updated;
-  });
+  return await db.transaction((tx) => syncSessionInTx(tx, id));
 }
 
 export async function applyAdminSessionControl(

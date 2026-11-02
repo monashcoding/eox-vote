@@ -37,6 +37,8 @@ export interface PublicSessionDto {
   stage: Stage;
   timer: TimerDto;
   autoAdvance: boolean;
+  /** Nominating and voting only, otherwise empty. Oldest first. */
+  nominees: PublicNomineeDto[];
 }
 
 export interface PublicStateDto {
@@ -47,7 +49,6 @@ export interface PublicStateDto {
 export interface MeDto {
   sessionId: string | null;
   nominations: PublicNomineeDto[];
-  votes: string[];
 }
 
 export interface AdminSessionSummaryDto {

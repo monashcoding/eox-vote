@@ -1,23 +1,25 @@
 "use client";
 
 import * as React from "react";
-import { PublicStateDto, Stage } from "@/lib/api-types";
+import { PublicSessionDto, PublicStateDto, Stage } from "@/lib/api-types";
 import { api } from "@/lib/client/api";
 import { formatCountdownCopy, useCountdown } from "@/lib/client/use-countdown";
 import { usePolling } from "@/lib/client/use-polling";
 import { StagePill } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { NominatingView } from "./nominating-view";
 
-export function StageBody({ stage }: { stage: Stage }): React.JSX.Element {
-  switch (stage) {
+export function StageBody({
+  session,
+  onChanged,
+}: {
+  session: PublicSessionDto;
+  onChanged: () => Promise<void>;
+}): React.JSX.Element {
+  switch (session.stage) {
     case Stage.Nominating:
       return (
-        <Card className="p-8 text-center">
-          <h2 className="text-xl font-bold">Nominations are open.</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Costume submissions will be available here soon.
-          </p>
-        </Card>
+        <NominatingView key={session.id} session={session} onChanged={onChanged} />
       );
     case Stage.Voting:
       return (
@@ -114,7 +116,7 @@ export function AttendeeApp(): React.JSX.Element {
       </header>
 
       <section className="flex-1 px-4 py-8 max-w-xl mx-auto w-full">
-        <StageBody stage={session.stage} />
+        <StageBody session={session} onChanged={fetchState} />
       </section>
     </main>
   );
