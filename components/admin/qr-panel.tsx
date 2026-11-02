@@ -47,6 +47,14 @@ async function loadCanvasFonts(fontFamily: string): Promise<void> {
   ]);
 }
 
+/** Loads the MAC logo for the canvas; the PNG waits for it like the fonts. */
+async function loadLogo(): Promise<HTMLImageElement> {
+  const image = new Image();
+  image.src = "/mac.svg";
+  await image.decode();
+  return image;
+}
+
 export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
   const [url, setUrl] = React.useState(() => `${window.location.origin}/`);
   const [renderError, setRenderError] = React.useState<string | null>(null);
@@ -66,9 +74,9 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
 
     void (async () => {
       try {
-        await loadCanvasFonts(fontFamily);
+        const [logo] = await Promise.all([loadLogo(), loadCanvasFonts(fontFamily)]);
         if (cancelled) return;
-        renderQrImage(canvas, { caption, url: trimmedUrl }, fontFamily);
+        renderQrImage(canvas, { caption, url: trimmedUrl, logo }, fontFamily);
         setRenderError(null);
       } catch (err: unknown) {
         if (cancelled) return;
@@ -94,8 +102,8 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
     try {
       const canvas = document.createElement("canvas");
       const fontFamily = getComputedStyle(document.body).fontFamily;
-      await loadCanvasFonts(fontFamily);
-      renderQrImage(canvas, { caption, url: trimmedUrl }, fontFamily);
+      const [logo] = await Promise.all([loadLogo(), loadCanvasFonts(fontFamily)]);
+      renderQrImage(canvas, { caption, url: trimmedUrl, logo }, fontFamily);
       // Executor form on purpose: Promise.withResolvers is missing on iOS < 17.4.
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob(resolve, "image/png");

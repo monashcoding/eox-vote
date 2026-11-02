@@ -15,12 +15,15 @@ const CAPTION_LINE_PX = 78;
 const URL_FONT_PX = 40;
 const URL_LINE_PX = 52;
 const GAP_PX = 56;
+const LOGO_PX = 176;
 const MAX_CAPTION_LINES = 3;
 const MAX_URL_LINES = 4;
 
 export interface QrImageContent {
   caption: string;
   url: string;
+  /** MAC logo drawn above the caption, already loaded. */
+  logo?: CanvasImageSource;
 }
 
 function wrapWords(
@@ -100,14 +103,14 @@ function truncate(
 }
 
 /**
- * Draws a printable QR poster onto `canvas`: white paper, black modules with a
- * quiet zone, the caption above the code and the encoded URL below it. The
- * canvas is 1280 px wide; its height follows the text. Throws if the text does
- * not fit in a QR code.
+ * Draws a printable QR poster onto `canvas`: white paper, the MAC logo, the
+ * caption above the code, black modules with a quiet zone, and the encoded URL
+ * below it. The canvas is 1280 px wide; its height follows the text. Throws if
+ * the text does not fit in a QR code.
  */
 export function renderQrImage(
   canvas: HTMLCanvasElement,
-  { caption, url }: QrImageContent,
+  { caption, url, logo }: QrImageContent,
   fontFamily: string
 ): void {
   // Error correction Q (25 percent) survives scuffs and projector glare.
@@ -141,8 +144,10 @@ export function renderQrImage(
   context.font = urlFont;
   const urlLines = wrapChars(context, url, contentWidth, MAX_URL_LINES);
 
+  const logoBlockPx = logo ? LOGO_PX + GAP_PX : 0;
   const height =
     MARGIN_PX +
+    logoBlockPx +
     captionLines.length * CAPTION_LINE_PX +
     GAP_PX +
     boxPx +
@@ -162,6 +167,11 @@ export function renderQrImage(
   const centreX = IMAGE_WIDTH_PX / 2;
 
   let y = MARGIN_PX;
+  if (logo) {
+    // Above the caption, well clear of the modules and their quiet zone.
+    context.drawImage(logo, centreX - LOGO_PX / 2, y, LOGO_PX, LOGO_PX);
+    y += LOGO_PX + GAP_PX;
+  }
   context.font = captionFont;
   for (const line of captionLines) {
     context.fillText(line, centreX, y + CAPTION_LINE_PX / 2);
