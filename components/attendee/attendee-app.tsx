@@ -117,14 +117,25 @@ export function AttendeeApp(): React.JSX.Element {
 
   if (!session || session.stage === Stage.Pending) {
     return (
-      <main className="safe-t safe-b flex min-h-dvh flex-col items-center justify-center px-4 text-center sm:px-6">
+      <main className="safe-t safe-b flex min-h-dvh flex-col items-center justify-center overflow-x-clip px-4 text-center sm:px-6">
         <Eyebrow>Monash Association of Coding</Eyebrow>
         <h1 className="mt-4 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
           <span className="block">EOX 2026</span>{" "}
-          <span className="mt-2 block">
+          <span className="mt-4 block">
             Best{" "}
-            <span className="inline-block rounded-tag bg-primary px-2 py-0.5 text-primary-foreground">
-              Dressed
+            <span className="relative isolate inline-block">
+              {/* Min peeks over the top edge of the highlight from behind it. */}
+              <img
+                src="/mascots/min-artist.svg"
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                className="pointer-events-none absolute right-[0.1em] bottom-[calc(100%_-_0.4em)] -z-10 w-[1.55em] max-w-none rotate-15 select-none"
+              />
+              {/* A ring in the page colour outlines the box where it covers Min. */}
+              <span className="inline-block rounded-tag bg-primary px-2 py-0.5 text-primary-foreground ring-4 ring-background">
+                Dressed
+              </span>
             </span>
           </span>
         </h1>
