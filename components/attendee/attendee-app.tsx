@@ -130,7 +130,7 @@ export function AttendeeApp(): React.JSX.Element {
                 alt=""
                 aria-hidden="true"
                 draggable={false}
-                className="pointer-events-none absolute right-[0.1em] bottom-[calc(100%_-_0.4em)] -z-10 w-[1.55em] max-w-none rotate-15 select-none"
+                className="pointer-events-none absolute -right-[0.15em] bottom-[calc(100%_-_0.4em)] -z-10 w-[1.55em] max-w-none rotate-15 select-none"
               />
               {/* A ring in the page colour outlines the box where it covers Min. */}
               <span className="inline-block rounded-tag bg-primary px-2 py-0.5 text-primary-foreground ring-4 ring-background">
