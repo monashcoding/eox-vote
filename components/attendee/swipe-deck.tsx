@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -48,6 +49,42 @@ function getReducedMotionServerSnapshot(): boolean {
 const FLY_DURATION_MS = 220;
 const REDUCED_FADE_MS = 120;
 const EASE_REVEAL = "var(--ease-reveal, cubic-bezier(0.22, 1, 0.36, 1))";
+const DEAL_DURATION_MS = 260;
+const DEAL_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+/*
+ * Resting pose of each layer, top card first: a loose pile of playing cards
+ * whose edges peek out at different angles. A card takes the next layer's
+ * pose as the card above it is dragged off, so the pile settles as you swipe.
+ */
+const PILE = [
+  { x: 0, y: 0, rotate: -1.5 },
+  { x: 3, y: 2, rotate: 2.5 },
+  { x: -4, y: 4, rotate: -4 },
+  { x: 5, y: 6, rotate: 5.5 },
+] as const;
+const PILE_SIZE = PILE.length;
+
+/**
+ * Transform for a card on `layer`, `progress` (0 to 1) of the way to the
+ * layer above. Reduced motion keeps the offsets but drops the rotation.
+ */
+function pileTransform(
+  layer: number,
+  progress: number,
+  reducedMotion: boolean,
+  dragX = 0,
+  dragRotate = 0
+): string {
+  const from = PILE[layer];
+  const to = PILE[Math.max(0, layer - 1)];
+  const x = from.x + (to.x - from.x) * progress + dragX;
+  const y = from.y + (to.y - from.y) * progress;
+  const rotate = reducedMotion
+    ? 0
+    : from.rotate + (to.rotate - from.rotate) * progress + dragRotate;
+  return `translate3d(${x}px, ${y}px, 0) rotate(${rotate}deg)`;
+}
 
 type FlightState = {
   id: string;
@@ -74,8 +111,39 @@ export function SwipeDeck(props: {
   const [flight, setFlight] = useState<FlightState | null>(null);
 
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const pileRef = useRef<HTMLDivElement | null>(null);
+  const shownIdsRef = useRef<ReadonlySet<string> | null>(null);
   const pointerIdRef = useRef<number | null>(null);
   const dragOriginRef = useRef({ x: 0, time: 0 });
+
+  /*
+   * Deal: when a swipe brings a new card into the pile, it rotates out from
+   * behind the card that was at the bottom (now one layer up) to its own pose.
+   * Skipped on first render, under reduced motion, and when a card comes back
+   * on top after a failed vote.
+   */
+  const pileKey = cards
+    .slice(0, PILE_SIZE)
+    .map((card) => card.id)
+    .join("|");
+  useLayoutEffect(() => {
+    const ids = pileKey ? pileKey.split("|") : [];
+    const previous = shownIdsRef.current;
+    shownIdsRef.current = new Set(ids);
+    if (!previous || reducedMotion || ids.length < PILE_SIZE) return;
+    const dealtId = ids[PILE_SIZE - 1];
+    if (previous.has(dealtId) || !previous.has(ids[0])) return;
+    const dealt = pileRef.current?.querySelector<HTMLElement>(
+      `[data-card-id="${CSS.escape(dealtId)}"]`
+    );
+    dealt?.animate(
+      [
+        { transform: pileTransform(PILE_SIZE - 2, 0, false) },
+        { transform: pileTransform(PILE_SIZE - 1, 0, false) },
+      ],
+      { duration: DEAL_DURATION_MS, easing: DEAL_EASING }
+    );
+  }, [pileKey, reducedMotion]);
 
   const topCard = cards[0];
   const activeFlight =
@@ -203,7 +271,7 @@ export function SwipeDeck(props: {
   /* Empty check */
   if (cards.length === 0) return null;
 
-  const visibleCards = cards.slice(0, 3);
+  const visibleCards = cards.slice(0, PILE_SIZE);
   const dragProgress = Math.min(1, Math.abs(dragOffset) / 120);
   const gestureProgress = activeFlight !== null ? 1 : dragProgress;
 
@@ -235,29 +303,24 @@ export function SwipeDeck(props: {
       )}
     >
       {/* Card stack: 3:4 and as wide as the deck allows once the Skip/Vote
-          row (--deck-controls: button plus gap) is taken out of its height.
-          Short (landscape) viewports put the buttons beside the card, so the
-          width gives up that space instead. */}
+          row (--deck-controls: button plus gap) is taken out of its height,
+          less 2rem across for the rotated cards' corners. Short (landscape)
+          viewports put the buttons beside the card, so the width gives up
+          that space instead. */}
       <div
-        className="relative aspect-3/4 w-[min(var(--deck-max),100cqw,calc((100cqh_-_var(--deck-controls))*0.75))] shrink-0 select-none short:w-[min(calc(100cqh*0.75),calc(100cqw_-_var(--deck-controls)))]"
+        ref={pileRef}
+        className="relative aspect-3/4 w-[min(var(--deck-max),calc(100cqw_-_2rem),calc((100cqh_-_var(--deck-controls))*0.75))] shrink-0 select-none short:w-[min(calc(100cqh*0.75),calc(100cqw_-_var(--deck-controls)_-_2rem))]"
         style={{ touchAction: "pan-y" }}
       >
         {visibleCards.map((card, index) => {
           const isTop = index === 0;
 
-          // Background cards scale and lift as the top card is moved (skipped under reduced motion)
-          const baseScale = 1 - index * 0.05;
-          const baseY = index * 10;
-          const targetScale = 1 - (index - 1) * 0.05;
-          const targetY = (index - 1) * 10;
+          // Cards below take the pose of the layer above as the top card is
+          // dragged off (held still under reduced motion).
           const progress = reducedMotion ? 0 : gestureProgress;
-          const currentScale = baseScale + (targetScale - baseScale) * progress;
-          const currentY = baseY + (targetY - baseY) * progress;
-
-          let transform = `scale(${currentScale}) translateY(${currentY}px)`;
-          let transition = isDragging
-            ? "none"
-            : reducedMotion
+          let transform = pileTransform(index, isTop ? 0 : progress, reducedMotion);
+          let transition =
+            isDragging || reducedMotion
               ? "none"
               : `transform ${FLY_DURATION_MS}ms ${EASE_REVEAL}`;
           let opacity: number | undefined;
@@ -270,7 +333,6 @@ export function SwipeDeck(props: {
 
             if (activeFlight) {
               if (reducedMotion) {
-                transform = "none";
                 transition = `opacity ${REDUCED_FADE_MS}ms ${EASE_REVEAL}`;
                 opacity = 0;
               } else {
@@ -278,27 +340,19 @@ export function SwipeDeck(props: {
                   activeFlight.direction === "right" ? "120vw" : "-120vw";
                 const flyRot = activeFlight.direction === "right" ? 15 : -15;
                 transform = `translate3d(${flyX}, 0, 0) rotate(${flyRot}deg)`;
-                transition = `transform ${FLY_DURATION_MS}ms ${EASE_REVEAL}`;
               }
-            } else if (isDragging) {
+            } else if (isDragging && !reducedMotion) {
               // Reduced motion: the card stays put, the Vote/Skip tag still shows the direction.
-              transform = reducedMotion
-                ? "none"
-                : `translate3d(${dragOffset}px, 0, 0) rotate(${rotationDeg}deg)`;
-              transition = "none";
-            } else {
-              transform = "translate3d(0, 0, 0) rotate(0deg)";
-              transition = reducedMotion
-                ? "none"
-                : `transform ${FLY_DURATION_MS}ms ${EASE_REVEAL}`;
+              transform = pileTransform(0, 0, false, dragOffset, rotationDeg);
             }
           }
 
-          const zIndex = isTop ? 30 : index === 1 ? 20 : 10;
+          const zIndex = (PILE_SIZE - index) * 10;
 
           return (
             <div
               key={card.id}
+              data-card-id={card.id}
               ref={isTop ? cardRef : undefined}
               role="group"
               aria-label={card.title}
