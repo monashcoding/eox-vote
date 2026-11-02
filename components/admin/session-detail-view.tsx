@@ -67,7 +67,7 @@ export function SessionDetailView({
       <div className="space-y-6">
         <Link
           href="/admin"
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted hover:text-foreground md:min-h-0"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted hover:text-foreground compact:min-h-0"
         >
           <ArrowLeft className="size-4" />
           Back to sessions

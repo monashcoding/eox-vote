@@ -135,7 +135,7 @@ function NomineeRow({
             </Button>
           </form>
         ) : (
-          <p className="min-w-0 flex-1 truncate text-base font-semibold md:text-sm">
+          <p className="min-w-0 flex-1 truncate text-base font-semibold compact:text-sm">
             {nominee.firstName} {nominee.lastName}
           </p>
         )}

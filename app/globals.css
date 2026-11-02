@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
 /*
+ * Density follows the input type, not width alone (guide 10 and 15):
+ * compact desktop sizes only apply at md+ with a fine pointer, so phones in
+ * landscape and touch tablets keep 44px targets and 16px inputs.
+ */
+@custom-variant compact (@media (width >= 48rem) and (pointer: fine));
+
+/*
  * MAC Design System - Complete Design Tokens
  * Dark only (:root).
  * Functional radius aliases enforce consistent 4px, 6px, and 12px geometry.
@@ -113,7 +120,7 @@
 /* ------------------------------------------------------------------ */
 /*  Mobile Input Zoom Guard (iOS Safari)                             */
 /* ------------------------------------------------------------------ */
-@media (width < 48rem) {
+@media (width < 48rem), (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]),
   select,
   textarea {

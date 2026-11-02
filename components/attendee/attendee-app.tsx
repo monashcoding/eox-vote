@@ -124,7 +124,7 @@ export function AttendeeApp(): React.JSX.Element {
             dressed
           </span>
         </h1>
-        <p className="mt-6 text-base text-muted md:text-sm">
+        <p className="mt-6 text-base text-muted compact:text-sm">
           Waiting for host to start a session
         </p>
         {offline && (

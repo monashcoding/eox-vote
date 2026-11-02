@@ -21,10 +21,10 @@ export const buttonVariants = cva(
         link: "h-auto border-none p-0 text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-11 gap-2 px-4 text-base md:h-9 md:gap-1.5 md:px-3 md:text-sm",
-        sm: "h-10 gap-1.5 px-3 text-sm md:h-8 md:gap-1 md:px-2.5 md:text-xs",
-        lg: "h-12 gap-2 px-5 text-base md:h-10 md:px-4",
-        icon: "size-11 md:size-9",
+        default: "h-11 gap-2 px-4 text-base compact:h-9 compact:gap-1.5 compact:px-3 compact:text-sm",
+        sm: "h-10 gap-1.5 px-3 text-sm compact:h-8 compact:gap-1 compact:px-2.5 compact:text-xs",
+        lg: "h-12 gap-2 px-5 text-base compact:h-10 compact:px-4",
+        icon: "size-11 compact:size-9",
       },
     },
     defaultVariants: {

@@ -361,7 +361,7 @@ export function SwipeDeck(props: {
           aria-label="Skip"
           disabled={isActionDisabled}
           onClick={() => topCard && startFlyOut(topCard, "left")}
-          className="size-14 md:size-11"
+          className="size-14 compact:size-11"
         >
           <X className="size-6" />
         </Button>
@@ -371,7 +371,7 @@ export function SwipeDeck(props: {
           aria-label="Vote"
           disabled={isActionDisabled}
           onClick={() => topCard && startFlyOut(topCard, "right")}
-          className="size-14 md:size-11"
+          className="size-14 compact:size-11"
         >
           <Check className="size-6" />
         </Button>

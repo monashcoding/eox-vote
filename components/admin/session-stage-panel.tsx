@@ -333,13 +333,13 @@ export function SessionStagePanel({
               </div>
             </div>
 
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-control border-2 border-border bg-card px-3 text-sm font-medium text-foreground transition-colors select-none hover:border-border-strong md:min-h-9">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-control border-2 border-border bg-card px-3 text-sm font-medium text-foreground transition-colors select-none hover:border-border-strong compact:min-h-9">
               <input
                 type="checkbox"
                 checked={session.autoAdvance}
                 onChange={handleToggleAutoAdvance}
                 disabled={loading}
-                className="size-5 cursor-pointer accent-primary md:size-4"
+                className="size-5 cursor-pointer accent-primary compact:size-4"
               />
               Auto-advance on expiry
             </label>

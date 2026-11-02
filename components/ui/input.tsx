@@ -8,7 +8,7 @@ export function Input({ className, ...props }: InputProps): React.JSX.Element {
   return (
     <InputPrimitive
       className={cn(
-        "h-11 w-full min-w-0 rounded-control border-2 border-border bg-field px-3 py-1 text-base text-foreground outline-none transition-colors duration-150 ease-reveal placeholder:text-subtle md:h-9 md:text-sm",
+        "h-11 w-full min-w-0 rounded-control border-2 border-border bg-field px-3 py-1 text-base text-foreground outline-none transition-colors duration-150 ease-reveal placeholder:text-subtle compact:h-9 compact:text-sm",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25",
         "disabled:pointer-events-none disabled:opacity-50",
         className
@@ -25,7 +25,7 @@ export function Textarea({
   return (
     <textarea
       className={cn(
-        "min-h-24 w-full min-w-0 rounded-control border-2 border-border bg-field p-3 text-base text-foreground outline-none transition-colors duration-150 ease-reveal placeholder:text-subtle md:text-sm",
+        "min-h-24 w-full min-w-0 rounded-control border-2 border-border bg-field p-3 text-base text-foreground outline-none transition-colors duration-150 ease-reveal placeholder:text-subtle compact:text-sm",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25",
         "disabled:pointer-events-none disabled:opacity-50",
         className

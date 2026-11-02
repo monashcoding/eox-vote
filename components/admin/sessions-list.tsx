@@ -235,14 +235,14 @@ export function SessionsList({
 
               <label
                 htmlFor="auto-advance"
-                className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground md:min-h-0"
+                className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground compact:min-h-0"
               >
                 <input
                   id="auto-advance"
                   type="checkbox"
                   checked={autoAdvance}
                   onChange={(e) => setAutoAdvance(e.target.checked)}
-                  className="size-5 shrink-0 cursor-pointer accent-primary md:size-4"
+                  className="size-5 shrink-0 cursor-pointer accent-primary compact:size-4"
                 />
                 Move to the next stage when the timer ends
               </label>

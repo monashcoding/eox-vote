@@ -50,7 +50,7 @@ export function SessionHeader({
     <div className="space-y-4">
       <Link
         href="/admin"
-        className="group inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 hover:text-foreground md:min-h-0"
+        className="group inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 hover:text-foreground compact:min-h-0"
       >
         <ArrowLeft className="size-4 transition-transform duration-200 ease-reveal group-hover:-translate-x-0.5 motion-reduce:transform-none" />
         Back to sessions

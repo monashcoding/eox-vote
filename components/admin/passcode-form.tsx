@@ -76,7 +76,7 @@ export function PasscodeForm({
 
             <Button
               type="submit"
-              className="h-12 w-full md:h-9"
+              className="h-12 w-full compact:h-9"
               disabled={loading || !passcode.trim()}
             >
               {loading ? "Checking..." : "Sign in"}

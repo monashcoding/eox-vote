@@ -338,7 +338,7 @@ function OwnNominationRow({
           alt={`${nominee.firstName} ${nominee.lastName}`}
           className="size-16 shrink-0 rounded-full object-cover"
         />
-        <p className="min-w-0 flex-1 truncate text-base font-semibold md:text-sm">
+        <p className="min-w-0 flex-1 truncate text-base font-semibold compact:text-sm">
           {nominee.firstName} {nominee.lastName}
         </p>
         {confirmingDelete ? (
@@ -348,14 +348,14 @@ function OwnNominationRow({
               size="sm"
               disabled={busy}
               onClick={handleDelete}
-              className="min-h-11 md:min-h-0"
+              className="min-h-11 compact:min-h-0"
             >
               {busy ? "Deleting..." : "Confirm delete"}
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="min-h-11 md:min-h-0"
+              className="min-h-11 compact:min-h-0"
               disabled={busy}
               onClick={() => setConfirmingDelete(false)}
             >
