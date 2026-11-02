@@ -2,20 +2,9 @@
 
 /*
  * MAC Design System - Complete Design Tokens
- * Dark = default (:root). Light = opt-in (.light class via next-themes).
+ * Dark only (:root).
  * Functional radius aliases enforce consistent 4px, 6px, and 12px geometry.
  */
-
-/* ------------------------------------------------------------------ */
-/*  Dark variant for next-themes attribute="class". Rarely needed:    */
-/*  :root already holds the dark tokens.                              */
-/* ------------------------------------------------------------------ */
-@custom-variant dark (&:where(.dark, .dark *));
-
-/* ------------------------------------------------------------------ */
-/*  Light theme variant for next-themes attribute="class"             */
-/* ------------------------------------------------------------------ */
-@custom-variant light (&:where(.light, .light *));
 
 @theme inline {
   /* --- Typography --- */
@@ -101,8 +90,6 @@
 
   /* Elevation and shadows */
   --shadow-card: none;
-  --shadow-float: 0 16px 48px rgba(0, 0, 0, 0.5);
-  --shadow-dialog: 0 24px 72px rgba(0, 0, 0, 0.58);
 
   /* Motion timing */
   --ease-reveal: cubic-bezier(0.22, 1, 0.36, 1);
@@ -111,51 +98,6 @@
   /* Mobile layout heights */
   --mobile-nav-content-height: 3.75rem;
   --mobile-nav-height: calc(var(--mobile-nav-content-height) + env(safe-area-inset-bottom, 0px));
-}
-
-/* ------------------------------------------------------------------ */
-/*  Light Theme Tokens (Opt-in via .light class)                      */
-/* ------------------------------------------------------------------ */
-.light {
-  color-scheme: light;
-
-  /* Canvas and surfaces */
-  --background: #f5f5f2;
-  --surface-soft: #efeeea;
-  --card: #ffffff;
-  --accent: #ebeae5;
-
-  /* Structural borders */
-  --border: #d9d7d0;
-  --border-strong: #c8c6bf;
-
-  /* Typography (WCAG AA verified) */
-  --foreground: #252525;
-  --muted: #6a6964;
-  --subtle: #6a6964;
-  --disabled: #b5b3ad;
-
-  /* Brand Yellow */
-  --primary: #ffe330;
-  --primary-foreground: #252525;
-
-  /* Form controls */
-  --field: #f8f8f6;
-  --ring: #252525;
-  --emphasis: #252525;
-
-  /* Semantic status tokens (light variants) */
-  --success: #166534;
-  --danger: #b91c1c;
-  --info: #0369a1;
-  --live: #9a3412;
-
-  /* Elevation and shadows */
-  --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.02),
-                 0 4px 10px -4px rgba(37, 37, 37, 0.12),
-                 0 6px 14px -8px rgba(37, 37, 37, 0.12);
-  --shadow-float: 0 12px 32px rgba(37, 37, 37, 0.16);
-  --shadow-dialog: 0 12px 32px rgba(37, 37, 37, 0.16);
 }
 
 /* ------------------------------------------------------------------ */
@@ -202,34 +144,10 @@
 }
 
 /* ------------------------------------------------------------------ */
-/*  Fade-in Animation (Dialog overlay)                                */
-/* ------------------------------------------------------------------ */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@utility animate-fade-in {
-  animation: fade-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* ------------------------------------------------------------------ */
 /*  Utility Elevation Helpers                                         */
 /* ------------------------------------------------------------------ */
 @utility shadow-card {
   box-shadow: var(--shadow-card);
-}
-
-@utility shadow-float {
-  box-shadow: var(--shadow-float);
-}
-
-@utility shadow-dialog {
-  box-shadow: var(--shadow-dialog);
 }
 
 /* ------------------------------------------------------------------ */
