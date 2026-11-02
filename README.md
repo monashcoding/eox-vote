@@ -13,12 +13,12 @@ Each event is a **session**. The host creates one at `/admin`, marks it as the c
 | `pending` | "Waiting for host to start a session" |
 | `nominating` | Nominate form (first name, last name, costume photo) and a browsable list of all nominations. Attendees can edit or delete their own nominations. |
 | `voting` | A swipe deck: swipe right to vote for an entry, left to skip. After the deck they see who they voted for and can add or remove votes. All entries stay browsable. |
-| `results` | Nothing at first. Each time the host presses "Reveal next", every attendee sees the next place appear (3rd, then 2nd, then 1st). |
+| `results` | Nothing at first. Each time the host presses the reveal button, which names the place it shows ("Reveal 3rd place", "Reveal joint 2nd place"), every attendee sees that place appear (3rd, then 2nd, then 1st). |
 | `finished` | The full podium stays visible. |
 
 Rules worth knowing:
 
-- **Timers are informational.** Nominating and voting can have a countdown ("Nominations close in 12:34"). When it reaches zero the stage stays open, unless the session has **auto-advance** on, in which case it moves to the next stage by itself. Hosts can pause, resume, stop, set, and add or remove time at any point.
+- **Timers are informational.** Nominating and voting can have a countdown ("Nominations close in 12:34"). When it reaches zero the stage stays open, unless the session has **auto-advance** on, in which case it moves to the next stage by itself. During nominating and voting, hosts can pause, resume, stop, set, and add or remove time.
 - **One vote per entry per device.** A device can vote for many entries but only once for each. This is enforced by a primary key on `(nominee_id, voter_token_hash)`.
 - **Ties share a place** (1, 2, 2, 4). Only entries with at least one vote are ranked. Joint places are revealed together.
 - Moving a stage back never deletes nominations or votes.
