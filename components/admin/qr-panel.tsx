@@ -47,12 +47,19 @@ async function loadCanvasFonts(fontFamily: string): Promise<void> {
   ]);
 }
 
-/** Loads the MAC logo for the canvas; the PNG waits for it like the fonts. */
-async function loadLogo(): Promise<HTMLImageElement> {
+/**
+ * Loads the MAC logo for the canvas; the PNG waits for it like the fonts. The
+ * logo is decoration, so if it cannot load the code is drawn without it.
+ */
+async function loadLogo(): Promise<HTMLImageElement | undefined> {
   const image = new Image();
   image.src = "/mac.svg";
-  await image.decode();
-  return image;
+  try {
+    await image.decode();
+    return image;
+  } catch {
+    return undefined;
+  }
 }
 
 export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
