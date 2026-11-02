@@ -98,8 +98,8 @@ export function SessionDetailView({
 
         <div className="space-y-6 sm:space-y-8">
           <SessionStagePanel session={session} onRefresh={fetchSession} />
-          <NomineesPanel session={session} onRefresh={fetchSession} />
           <ResultsPanel session={session} onRefresh={fetchSession} />
+          <NomineesPanel session={session} onRefresh={fetchSession} />
           <QrPanel session={session} />
 
           <SessionSettingsPanel session={session} onRefresh={fetchSession} />
