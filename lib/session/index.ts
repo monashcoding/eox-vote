@@ -10,7 +10,7 @@ import {
 import { applyAutoAdvance, applyControl, canAutoAdvance } from "./engine";
 import { buildPodium, clampRevealed } from "./ranking";
 import { invalidatePublicState } from "./public-state";
-import { db, type DbTransaction } from "../db";
+import { db, type DbReader, type DbTransaction } from "../db";
 import { appSettings, nominees, sessions, votes } from "../db/schema";
 import { HttpError } from "../http";
 import { listAdminNominees } from "../nominees";
@@ -70,8 +70,10 @@ export function toAdminSessionDetailDto(
   };
 }
 
-export async function getCurrentSessionId(): Promise<string | null> {
-  const [settings] = await db
+export async function getCurrentSessionId(
+  executor: DbReader = db
+): Promise<string | null> {
+  const [settings] = await executor
     .select({ currentSessionId: appSettings.currentSessionId })
     .from(appSettings)
     .where(eq(appSettings.id, 1))
@@ -192,19 +194,12 @@ export async function syncSessionInTx(
   return updated;
 }
 
-export async function syncSession(
-  id: string
-): Promise<typeof sessions.$inferSelect> {
-  return await db.transaction((tx) => syncSessionInTx(tx, id));
-}
-
 export async function applyAdminSessionControl(
   id: string,
   request: ControlRequest
 ): Promise<AdminSessionDetailDto> {
-  const currentSessionId = await getCurrentSessionId();
-
   return await db.transaction(async (tx) => {
+    const currentSessionId = await getCurrentSessionId(tx);
     const [session] = await tx
       .select()
       .from(sessions)
@@ -232,7 +227,7 @@ export async function applyAdminSessionControl(
       current,
       request,
       now,
-      buildPodium(await listAdminNominees(current.id)).length
+      buildPodium(await listAdminNominees(current.id, tx)).length
     );
 
     const [updated] = await tx
@@ -253,7 +248,7 @@ export async function applyAdminSessionControl(
     return toAdminSessionDetailDto(
       updated,
       currentSessionId,
-      await listAdminNominees(updated.id)
+      await listAdminNominees(updated.id, tx)
     );
   });
 }
@@ -261,13 +256,14 @@ export async function applyAdminSessionControl(
 export async function getAdminSessionDetail(
   id: string
 ): Promise<AdminSessionDetailDto> {
-  const session = await syncSession(id);
-  const currentSessionId = await getCurrentSessionId();
-  return toAdminSessionDetailDto(
-    session,
-    currentSessionId,
-    await listAdminNominees(session.id)
-  );
+  return await db.transaction(async (tx) => {
+    const session = await syncSessionInTx(tx, id);
+    return toAdminSessionDetailDto(
+      session,
+      await getCurrentSessionId(tx),
+      await listAdminNominees(session.id, tx)
+    );
+  });
 }
 
 export interface CreateSessionInput {

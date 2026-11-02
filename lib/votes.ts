@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { Stage } from "./api-types";
-import { db, type DbTransaction } from "./db";
+import { db, type DbReader, type DbTransaction } from "./db";
 import { nominees, votes } from "./db/schema";
 import { HttpError } from "./http";
 import { getCurrentSessionId, syncSessionInTx } from "./session";
@@ -12,7 +12,7 @@ const NOT_VOTING = "Voting is not open right now";
 export async function listDeviceVotes(
   sessionId: string,
   voterTokenHash: string,
-  executor: Pick<DbTransaction, "select"> = db
+  executor: DbReader = db
 ): Promise<string[]> {
   const rows = await executor
     .select({ nomineeId: votes.nomineeId })
@@ -36,7 +36,7 @@ async function requireVotableNominee(
   tx: DbTransaction,
   nomineeId: string
 ): Promise<string> {
-  const sessionId = await getCurrentSessionId();
+  const sessionId = await getCurrentSessionId(tx);
   if (!sessionId) {
     throw new HttpError(409, NOT_VOTING);
   }

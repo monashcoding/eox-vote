@@ -5,10 +5,11 @@ import {
   PublicStateDto,
   Stage,
 } from "../api-types";
+import { db } from "../db";
 import { sessions } from "../db/schema";
 import { HttpError } from "../http";
 import { listAdminNominees, listPublicNominees } from "../nominees";
-import { getCurrentSessionId, syncSession, toTimerDto } from "./index";
+import { getCurrentSessionId, syncSessionInTx, toTimerDto } from "./index";
 import { buildPodium, publicResults } from "./ranking";
 
 export function toPublicSessionDto(
@@ -29,55 +30,49 @@ export function toPublicSessionDto(
 
 interface CachedPublicSession {
   cachedAt: number;
+  generation: number;
   session: PublicSessionDto | null;
 }
 
+interface PendingRebuild {
+  generation: number;
+  promise: Promise<PublicSessionDto | null>;
+}
+
+const CACHE_TTL_MS = 1000;
+
 let cachedState: CachedPublicSession | null = null;
+let pendingRebuild: PendingRebuild | null = null;
+/** Bumped by every invalidation; a rebuild started before a bump never fills the cache. */
+let generation = 0;
 
 export function invalidatePublicState(): void {
+  generation++;
   cachedState = null;
 }
 
-export async function getPublicState(): Promise<PublicStateDto> {
-  const now = Date.now();
+async function buildPublicSession(): Promise<PublicSessionDto | null> {
+  return await db.transaction(async (tx) => {
+    const currentSessionId = await getCurrentSessionId(tx);
+    if (!currentSessionId) {
+      return null;
+    }
 
-  if (cachedState && now - cachedState.cachedAt < 1000) {
-    return {
-      serverNow: now,
-      session: cachedState.session,
-    };
-  }
-
-  const currentSessionId = await getCurrentSessionId();
-  if (!currentSessionId) {
-    cachedState = {
-      cachedAt: now,
-      session: null,
-    };
-    return {
-      serverNow: now,
-      session: null,
-    };
-  }
-
-  let sessionRow: typeof sessions.$inferSelect | null = null;
-  try {
-    sessionRow = await syncSession(currentSessionId);
-  } catch (err: unknown) {
-    if (err instanceof HttpError && err.status === 404) {
-      sessionRow = null;
-    } else {
+    let sessionRow: typeof sessions.$inferSelect;
+    try {
+      sessionRow = await syncSessionInTx(tx, currentSessionId);
+    } catch (err: unknown) {
+      if (err instanceof HttpError && err.status === 404) {
+        return null;
+      }
       throw err;
     }
-  }
 
-  let publicSession: PublicSessionDto | null = null;
-  if (sessionRow) {
     const showNominees =
       sessionRow.stage === Stage.Nominating ||
       sessionRow.stage === Stage.Voting;
     const nominees = showNominees
-      ? await listPublicNominees(sessionRow.id)
+      ? await listPublicNominees(sessionRow.id, tx)
       : [];
     const showResults =
       sessionRow.stage === Stage.Results ||
@@ -85,20 +80,55 @@ export async function getPublicState(): Promise<PublicStateDto> {
     const results = showResults
       ? publicResults(
           sessionRow.stage as Stage,
-          buildPodium(await listAdminNominees(sessionRow.id)),
+          buildPodium(await listAdminNominees(sessionRow.id, tx)),
           sessionRow.revealedCount
         )
       : null;
-    publicSession = toPublicSessionDto(sessionRow, nominees, results);
+    return toPublicSessionDto(sessionRow, nominees, results);
+  });
+}
+
+/** Concurrent misses for the same generation share one rebuild. */
+function rebuildPublicSession(): Promise<PublicSessionDto | null> {
+  if (pendingRebuild && pendingRebuild.generation === generation) {
+    return pendingRebuild.promise;
   }
 
-  cachedState = {
-    cachedAt: now,
-    session: publicSession,
+  const startedGeneration = generation;
+  const startedAt = Date.now();
+  const entry: PendingRebuild = {
+    generation: startedGeneration,
+    promise: buildPublicSession()
+      .then((session) => {
+        if (startedGeneration === generation) {
+          cachedState = {
+            cachedAt: startedAt,
+            generation: startedGeneration,
+            session,
+          };
+        }
+        return session;
+      })
+      .finally(() => {
+        if (pendingRebuild === entry) {
+          pendingRebuild = null;
+        }
+      }),
   };
+  pendingRebuild = entry;
+  return entry.promise;
+}
 
-  return {
-    serverNow: now,
-    session: publicSession,
-  };
+export async function getPublicState(): Promise<PublicStateDto> {
+  const cached = cachedState;
+  if (
+    cached &&
+    cached.generation === generation &&
+    Date.now() - cached.cachedAt < CACHE_TTL_MS
+  ) {
+    return { serverNow: Date.now(), session: cached.session };
+  }
+
+  const session = await rebuildPublicSession();
+  return { serverNow: Date.now(), session };
 }

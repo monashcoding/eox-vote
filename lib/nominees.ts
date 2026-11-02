@@ -1,6 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { AdminNomineeDto, PublicNomineeDto } from "./api-types";
-import { db } from "./db";
+import { db, type DbReader } from "./db";
 import { HttpError } from "./http";
 import { nominees, votes } from "./db/schema";
 
@@ -29,9 +29,10 @@ export function toAdminNomineeDto(
 
 /** All nominees of a session, oldest first. */
 export async function listPublicNominees(
-  sessionId: string
+  sessionId: string,
+  executor: DbReader = db
 ): Promise<PublicNomineeDto[]> {
-  const rows = await db
+  const rows = await executor
     .select()
     .from(nominees)
     .where(eq(nominees.sessionId, sessionId))
@@ -41,9 +42,10 @@ export async function listPublicNominees(
 
 /** All nominees of a session with derived vote counts, oldest first. */
 export async function listAdminNominees(
-  sessionId: string
+  sessionId: string,
+  executor: DbReader = db
 ): Promise<AdminNomineeDto[]> {
-  const rows = await db
+  const rows = await executor
     .select({
       nominee: nominees,
       voteCount: sql<number>`count(${votes.nomineeId})::int`,
