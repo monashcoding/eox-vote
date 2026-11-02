@@ -10,50 +10,14 @@ import {
 import { Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { decideSwipe, type SwipeDirection } from "@/lib/client/swipe-decision";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
-/*  Public types & constants                                          */
+/*  Public types                                                      */
 /* ------------------------------------------------------------------ */
 
 export type SwipeCard = { id: string; title: string; imageUrl: string };
-export type SwipeDirection = "left" | "right";
-
-export const SWIPE_DISTANCE_THRESHOLD = 110;
-export const SWIPE_DISTANCE_RATIO = 0.3;
-export const SWIPE_VELOCITY_THRESHOLD = 0.5; // px/ms (500 px/s)
-export const MIN_FLICK_DISTANCE = 20; // px minimum to avoid treating static taps as flicks
-
-/* ------------------------------------------------------------------ */
-/*  Decision function (pure, exported for testing)                    */
-/* ------------------------------------------------------------------ */
-
-/**
- * Pure decision function: determines if a drag gesture should dismiss
- * the card to "left" or "right", or return it to the centre (null).
- */
-export function decideSwipe(
-  dx: number,
-  cardWidth: number,
-  elapsedMs: number,
-): SwipeDirection | null {
-  const absDx = Math.abs(dx);
-  const threshold =
-    cardWidth > 0
-      ? Math.min(SWIPE_DISTANCE_THRESHOLD, cardWidth * SWIPE_DISTANCE_RATIO)
-      : SWIPE_DISTANCE_THRESHOLD;
-
-  const isDistanceThreshold = absDx >= threshold;
-  const velocity = elapsedMs > 0 ? absDx / elapsedMs : 0;
-  const isFlick =
-    absDx >= MIN_FLICK_DISTANCE && velocity >= SWIPE_VELOCITY_THRESHOLD;
-
-  if (isDistanceThreshold || isFlick) {
-    return dx > 0 ? "right" : "left";
-  }
-
-  return null;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Reduced-motion subscription (SSR safe, zero re-render loops)      */

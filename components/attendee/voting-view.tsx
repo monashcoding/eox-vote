@@ -22,11 +22,8 @@ import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  SwipeDeck,
-  type SwipeCard,
-  type SwipeDirection,
-} from "./swipe-deck";
+import { SwipeDeck, type SwipeCard } from "./swipe-deck";
+import type { SwipeDirection } from "@/lib/client/swipe-decision";
 import { VoteGrid } from "./vote-grid";
 
 const Tab = {
