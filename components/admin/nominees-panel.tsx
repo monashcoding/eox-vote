@@ -7,6 +7,7 @@ import { api } from "@/lib/client/api";
 import { resizeImage } from "@/lib/client/resize-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorNote } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 
 interface NomineesPanelProps {
@@ -92,7 +93,7 @@ function NomineeRow({
         <img
           src={nominee.photoUrl}
           alt={`${nominee.firstName} ${nominee.lastName}`}
-          className="h-14 w-14 shrink-0 rounded-full object-cover"
+          className="size-14 shrink-0 rounded-full object-cover"
         />
 
         {editing ? (
@@ -136,14 +137,17 @@ function NomineeRow({
             </Button>
           </form>
         ) : (
-          <p className="min-w-0 flex-1 truncate font-semibold">
+          <p className="min-w-0 flex-1 truncate text-base font-semibold md:text-sm">
             {nominee.firstName} {nominee.lastName}
           </p>
         )}
 
         {showVotes && (
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-accent">
-            {nominee.votes} {nominee.votes === 1 ? "vote" : "votes"}
+          <span className="text-xs font-semibold text-muted">
+            <span className="inline-block min-w-[3ch] text-right tabular-nums">
+              {nominee.votes.toLocaleString()}
+            </span>{" "}
+            {nominee.votes === 1 ? "vote" : "votes"}
           </span>
         )}
 
@@ -172,7 +176,7 @@ function NomineeRow({
               <>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   disabled={busy}
                   aria-label={`Edit name of ${nominee.firstName} ${nominee.lastName}`}
                   onClick={() => {
@@ -181,25 +185,25 @@ function NomineeRow({
                     setEditing(true);
                   }}
                 >
-                  <Pencil className="h-4 w-4" />
+                  <Pencil />
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   disabled={busy}
                   aria-label={`Replace photo of ${nominee.firstName} ${nominee.lastName}`}
                   onClick={() => document.getElementById(fileInputId)?.click()}
                 >
-                  <ImagePlus className="h-4 w-4" />
+                  <ImagePlus />
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   disabled={busy}
                   aria-label={`Delete ${nominee.firstName} ${nominee.lastName}`}
                   onClick={() => setConfirmingDelete(true)}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 />
                 </Button>
               </>
             )}
@@ -219,14 +223,7 @@ function NomineeRow({
         />
       </div>
 
-      {error && (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
-        >
-          {error}
-        </div>
-      )}
+      <ErrorNote message={error} />
     </li>
   );
 }
@@ -239,32 +236,28 @@ export function NomineesPanel({
   const nominees = session.nominees;
 
   return (
-    <Card className="border-white/10 bg-surface">
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base font-semibold">
+    <Card>
+      <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+        <CardTitle className="text-lg sm:text-xl">
           Nominees ({nominees.length})
         </CardTitle>
         <Button
-          variant="secondary"
+          variant="outline"
           size="sm"
           aria-pressed={showVotes}
           onClick={() => setShowVotes((v) => !v)}
         >
-          {showVotes ? (
-            <EyeOff className="h-4 w-4" />
-          ) : (
-            <Eye className="h-4 w-4" />
-          )}
+          {showVotes ? <EyeOff /> : <Eye />}
           <span>{showVotes ? "Hide votes" : "Show votes"}</span>
         </Button>
       </CardHeader>
       <CardContent>
         {nominees.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No nominations yet.
+          <p className="rounded-control border-2 border-dashed border-border p-6 text-center text-sm text-muted">
+            No nominations yet. They appear here as attendees submit them.
           </p>
         ) : (
-          <ul className="divide-y divide-white/10">
+          <ul className="divide-y divide-border">
             {nominees.map((nominee) => (
               <NomineeRow
                 key={nominee.id}

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { api, ApiError } from "@/lib/client/api";
+import { Spinner } from "@/components/ui/skeleton";
 import { AdminShell } from "./admin-shell";
 import { PasscodeForm } from "./passcode-form";
 
@@ -38,12 +39,7 @@ export function AdminGate({ children }: AdminGateProps): React.JSX.Element {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Verifying session...
-          </span>
-        </div>
+        <Spinner label="Checking sign-in" />
       </div>
     );
   }

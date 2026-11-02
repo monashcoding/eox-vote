@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Pause, Play, Square, Timer } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Pause, Play, Square, Timer } from "lucide-react";
 import {
   AdminSessionDetailDto,
   ControlAction,
@@ -13,7 +13,9 @@ import { useCountdown } from "@/lib/client/use-countdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorNote } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { Eyebrow, Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 interface SessionStagePanelProps {
@@ -142,7 +144,7 @@ export function SessionStagePanel({
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Failed to update auto-advance");
+        setError("Could not update auto-advance");
       }
     } finally {
       setLoading(false);
@@ -180,145 +182,140 @@ export function SessionStagePanel({
 
   return (
     <Card className="space-y-6">
-      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/10 pb-5">
-        <div>
-          <CardTitle className="text-xl">Stage and Timer</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Control the event lifecycle and live stage timers.
+      <CardHeader className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <CardTitle className="text-lg sm:text-xl">Stage and timer</CardTitle>
+          <p className="text-sm text-muted">
+            Control the event stage and its countdown.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {prevLabel && (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={loading}
-              onClick={handlePrevious}
-            >
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="outline" disabled={loading} onClick={handlePrevious}>
+              <ArrowLeft />
               {prevLabel}
             </Button>
           )}
           {nextLabel && (
-            <Button
-              size="sm"
-              disabled={loading}
-              onClick={handleNext}
-            >
+            <Button size="lg" disabled={loading} onClick={handleNext}>
               {nextLabel}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight />
             </Button>
           )}
         </div>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {error && (
-          <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-            {error}
-          </div>
-        )}
+        <ErrorNote message={error} />
 
-        {/* Stage Stepper */}
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-3">
-            Event Progress
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <Eyebrow className="mb-3 block">Event progress</Eyebrow>
+          <ol className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {STAGES.map((s, idx) => {
               const isCurrent = s.key === session.stage;
               const isPast = idx < currentStageIndex;
               return (
-                <div
+                <li
                   key={s.key}
+                  aria-current={isCurrent ? "step" : undefined}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg border p-3 text-sm transition-colors",
+                    "flex items-center gap-2.5 rounded-control border-2 p-3 text-sm transition-colors duration-150",
                     isCurrent
-                      ? "border-accent bg-accent/10 font-bold text-accent"
+                      ? "border-primary bg-accent/70 font-semibold text-foreground"
                       : isPast
-                        ? "border-white/20 bg-surface-deep text-foreground/80"
-                        : "border-white/5 bg-surface-deep/40 text-muted-foreground"
+                        ? "border-border bg-surface-soft text-foreground"
+                        : "border-border bg-surface-soft/40 text-muted"
                   )}
                 >
                   <span
                     className={cn(
-                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                      "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                       isCurrent
-                        ? "bg-accent text-accent-foreground"
+                        ? "bg-primary text-primary-foreground"
                         : isPast
-                          ? "bg-white/20 text-foreground"
-                          : "bg-white/5 text-muted-foreground"
+                          ? "bg-accent text-foreground"
+                          : "border-2 border-border text-muted"
                     )}
                   >
-                    {idx + 1}
+                    {isPast ? <Check className="size-3.5" /> : idx + 1}
                   </span>
                   <span className="truncate">{s.label}</span>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </div>
 
-        {/* Timer Display & Controls */}
-        <div className="rounded-lg border border-white/10 bg-surface-deep p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-6 rounded-panel border-2 border-border bg-surface-soft p-4 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Stage Countdown
-              </div>
-              <div className="mt-1 flex items-baseline gap-3">
-                <div className="font-mono text-4xl sm:text-5xl font-extrabold tracking-tight">
+              <Eyebrow>Stage countdown</Eyebrow>
+              <div className="mt-1 flex flex-wrap items-center gap-3">
+                <div
+                  className={cn(
+                    "inline-block min-w-[5ch] text-right text-5xl font-bold tracking-tight tabular-nums sm:text-6xl",
+                    countdown.isExpired
+                      ? "text-live"
+                      : countdown.hasTimer
+                        ? "text-foreground"
+                        : "text-disabled"
+                  )}
+                >
                   {countdown.formatted || "--:--"}
                 </div>
                 <div>
                   {countdown.status === "running" && (
-                    <Badge variant="default">Running</Badge>
+                    <Badge variant="live" tag>
+                      <span
+                        aria-hidden
+                        className="size-1.5 animate-pulse rounded-full bg-live motion-reduce:animate-none"
+                      />
+                      Running
+                    </Badge>
                   )}
                   {countdown.status === "paused" && (
-                    <Badge variant="outline">Paused</Badge>
+                    <Badge variant="outline" tag>
+                      <Pause />
+                      Paused
+                    </Badge>
                   )}
                   {countdown.status === "expired" && (
-                    <Badge className="border-destructive/30 bg-destructive/15 text-destructive font-semibold">
+                    <Badge variant="danger" tag>
                       Time is up
                     </Badge>
                   )}
                   {countdown.status === "none" && (
-                    <Badge variant="outline">No timer</Badge>
+                    <Badge variant="outline" tag>
+                      No timer
+                    </Badge>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Auto-advance toggle */}
-            <div className="flex items-center">
-              <label className="flex items-center gap-3 cursor-pointer select-none rounded-md border border-white/10 bg-surface px-3 py-2 hover:border-white/20 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={session.autoAdvance}
-                  onChange={handleToggleAutoAdvance}
-                  disabled={loading}
-                  className="h-4 w-4 rounded border-white/20 bg-surface-deep text-accent focus:ring-accent cursor-pointer"
-                />
-                <span className="text-sm font-medium text-foreground">
-                  Auto-advance on expiry
-                </span>
-              </label>
-            </div>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-control border-2 border-border bg-card px-3 text-sm font-medium text-foreground transition-colors select-none hover:border-border-strong md:min-h-9">
+              <input
+                type="checkbox"
+                checked={session.autoAdvance}
+                onChange={handleToggleAutoAdvance}
+                disabled={loading}
+                className="size-5 cursor-pointer accent-primary md:size-4"
+              />
+              Auto-advance on expiry
+            </label>
           </div>
 
-          {/* Controls visible only during nominating / voting */}
           {isTimed ? (
-            <div className="space-y-5 pt-4 border-t border-white/10">
-              {/* Primary timer buttons */}
+            <div className="space-y-5 border-t border-border pt-4">
               <div className="flex flex-wrap items-center gap-2">
                 {countdown.isRunning ? (
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
                     disabled={loading}
                     onClick={() => sendControl({ action: ControlAction.Pause })}
                   >
-                    <Pause className="h-4 w-4" />
+                    <Pause />
                     Pause
                   </Button>
                 ) : countdown.isPaused ? (
@@ -327,97 +324,76 @@ export function SessionStagePanel({
                     disabled={loading}
                     onClick={() => sendControl({ action: ControlAction.Resume })}
                   >
-                    <Play className="h-4 w-4" />
+                    <Play />
                     Resume
                   </Button>
                 ) : (
-                  <Button variant="secondary" size="sm" disabled>
-                    <Pause className="h-4 w-4" />
+                  <Button variant="outline" size="sm" disabled>
+                    <Pause />
                     Pause
                   </Button>
                 )}
 
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   disabled={loading || !countdown.hasTimer}
-                  onClick={() =>
-                    sendControl({ action: ControlAction.ClearTimer })
-                  }
+                  onClick={() => sendControl({ action: ControlAction.ClearTimer })}
                 >
-                  <Square className="h-4 w-4" />
+                  <Square />
                   Stop timer
                 </Button>
 
-                <div className="h-6 w-px bg-white/10 mx-1 hidden sm:block" />
+                <div className="mx-1 hidden h-6 w-px bg-border sm:block" />
 
-                {/* Quick deltas */}
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   disabled={loading || !countdown.hasTimer}
                   onClick={() =>
-                    sendControl({
-                      action: ControlAction.AdjustTimer,
-                      deltaMs: -5 * 60 * 1000,
-                    })
+                    sendControl({ action: ControlAction.AdjustTimer, deltaMs: -5 * 60 * 1000 })
                   }
                 >
                   -5m
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   disabled={loading || !countdown.hasTimer}
                   onClick={() =>
-                    sendControl({
-                      action: ControlAction.AdjustTimer,
-                      deltaMs: -1 * 60 * 1000,
-                    })
+                    sendControl({ action: ControlAction.AdjustTimer, deltaMs: -1 * 60 * 1000 })
                   }
                 >
                   -1m
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   disabled={loading}
                   onClick={() =>
-                    sendControl({
-                      action: ControlAction.AdjustTimer,
-                      deltaMs: 1 * 60 * 1000,
-                    })
+                    sendControl({ action: ControlAction.AdjustTimer, deltaMs: 1 * 60 * 1000 })
                   }
                 >
                   +1m
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   disabled={loading}
                   onClick={() =>
-                    sendControl({
-                      action: ControlAction.AdjustTimer,
-                      deltaMs: 5 * 60 * 1000,
-                    })
+                    sendControl({ action: ControlAction.AdjustTimer, deltaMs: 5 * 60 * 1000 })
                   }
                 >
                   +5m
                 </Button>
               </div>
 
-              {/* Set timer forms */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                {/* Set minutes */}
-                <form
-                  onSubmit={handleSetMinutes}
-                  className="flex items-end gap-2"
-                >
+              <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">
+                <form onSubmit={handleSetMinutes} className="flex items-end gap-2">
                   <div className="flex-1 space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                      Set duration (mins)
-                    </label>
+                    <Label htmlFor="set-duration">Set duration (minutes)</Label>
                     <Input
+                      id="set-duration"
                       type="number"
                       min={1}
                       max={600}
@@ -430,24 +406,19 @@ export function SessionStagePanel({
                   </div>
                   <Button
                     type="submit"
-                    variant="secondary"
+                    variant="outline"
                     disabled={loading || customMinutes <= 0}
                   >
-                    <Timer className="h-4 w-4" />
+                    <Timer />
                     Set
                   </Button>
                 </form>
 
-                {/* Set end time */}
-                <form
-                  onSubmit={handleSetEndTime}
-                  className="flex items-end gap-2"
-                >
+                <form onSubmit={handleSetEndTime} className="flex items-end gap-2">
                   <div className="flex-1 space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                      Set end time (local)
-                    </label>
+                    <Label htmlFor="set-end-time">Set end time (local)</Label>
                     <Input
+                      id="set-end-time"
                       type="time"
                       value={customEndTime}
                       onChange={(e) => setCustomEndTime(e.target.value)}
@@ -456,19 +427,19 @@ export function SessionStagePanel({
                   </div>
                   <Button
                     type="submit"
-                    variant="secondary"
+                    variant="outline"
                     disabled={loading || !customEndTime}
                   >
-                    <Timer className="h-4 w-4" />
+                    <Timer />
                     Set end
                   </Button>
                 </form>
               </div>
             </div>
           ) : (
-            <div className="pt-2 text-xs text-muted-foreground border-t border-white/10">
+            <p className="border-t border-border pt-4 text-xs text-muted">
               Timer controls are only available during the nominating and voting stages.
-            </div>
+            </p>
           )}
         </div>
       </CardContent>

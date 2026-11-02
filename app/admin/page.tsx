@@ -3,7 +3,7 @@ import { AdminGate } from "@/components/admin/admin-gate";
 import { SessionsList } from "@/components/admin/sessions-list";
 
 export const metadata: Metadata = {
-  title: "Admin Console | MAC Best Dressed",
+  title: "Host console | MAC best dressed",
   robots: {
     index: false,
     follow: false,

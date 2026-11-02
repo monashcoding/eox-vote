@@ -9,6 +9,9 @@ import { usePolling } from "@/lib/client/use-polling";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
+import { Spinner } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -46,15 +49,15 @@ function PhotoField({
       <label
         htmlFor={id}
         className={cn(
-          "flex aspect-[3/4] w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-white/20 bg-surface-deep text-muted-foreground transition-colors duration-150 ease-reveal hover:border-accent",
+          "flex aspect-[3/4] w-full cursor-pointer items-center justify-center overflow-hidden rounded-panel border-2 border-dashed border-border-strong bg-field text-muted transition-colors duration-150 ease-reveal hover:bg-accent has-[+input:focus-visible]:border-ring has-[+input:focus-visible]:ring-2 has-[+input:focus-visible]:ring-ring/30",
           disabled && "pointer-events-none opacity-50"
         )}
       >
         {previewUrl ? (
           <img src={previewUrl} alt="Photo preview" className="h-full w-full object-cover" />
         ) : (
-          <span className="flex flex-col items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
-            <ImagePlus className="h-6 w-6" />
+          <span className="flex flex-col items-center gap-2 text-sm font-medium">
+            <ImagePlus className="size-6" />
             Choose a photo
           </span>
         )}
@@ -124,18 +127,6 @@ function usePhoto(): {
   return { photo, previewUrl, error, pick, reset };
 }
 
-function ErrorNote({ message }: { message: string | null }): React.JSX.Element | null {
-  if (!message) return null;
-  return (
-    <div
-      role="alert"
-      className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
-    >
-      {message}
-    </div>
-  );
-}
-
 function NominateForm({
   onCreated,
 }: {
@@ -173,7 +164,7 @@ function NominateForm({
   };
 
   return (
-    <Card className="p-5">
+    <Card>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -213,7 +204,7 @@ function NominateForm({
         <Button
           type="submit"
           size="lg"
-          className="w-full"
+          className="w-full md:w-auto"
           disabled={submitting || !photo || !firstName.trim() || !lastName.trim()}
         >
           {submitting ? "Submitting..." : "Submit nomination"}
@@ -287,7 +278,7 @@ function OwnNominationRow({
 
   if (editing) {
     return (
-      <Card inset className="p-4">
+      <Card inset className="p-4 sm:p-4">
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
@@ -321,7 +312,7 @@ function OwnNominationRow({
             disabled={busy}
           />
           <ErrorNote message={photoError ?? error} />
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 md:flex-row md:justify-end">
             <Button
               type="button"
               variant="ghost"
@@ -345,14 +336,14 @@ function OwnNominationRow({
   }
 
   return (
-    <Card inset className="space-y-3 p-3">
+    <Card inset className="space-y-3 p-3 sm:p-3">
       <div className="flex items-center gap-3">
         <img
           src={nominee.photoUrl}
           alt={`${nominee.firstName} ${nominee.lastName}`}
-          className="h-16 w-16 shrink-0 rounded-full object-cover"
+          className="size-16 shrink-0 rounded-full object-cover"
         />
-        <p className="min-w-0 flex-1 truncate font-semibold">
+        <p className="min-w-0 flex-1 truncate text-base font-semibold md:text-sm">
           {nominee.firstName} {nominee.lastName}
         </p>
         {confirmingDelete ? (
@@ -373,19 +364,19 @@ function OwnNominationRow({
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               aria-label={`Edit ${nominee.firstName} ${nominee.lastName}`}
               onClick={startEditing}
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil />
             </Button>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               aria-label={`Delete ${nominee.firstName} ${nominee.lastName}`}
               onClick={() => setConfirmingDelete(true)}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 />
             </Button>
           </div>
         )}
@@ -402,9 +393,11 @@ function NomineeGallery({
 }): React.JSX.Element {
   if (nominees.length === 0) {
     return (
-      <Card className="p-8 text-center text-sm text-muted-foreground">
-        No nominations yet. Be the first!
-      </Card>
+      <EmptyState
+        mascot={Mascot.Wave}
+        title="No nominations yet"
+        description="Switch to the nominate tab and add the first costume."
+      />
     );
   }
   return (
@@ -412,7 +405,7 @@ function NomineeGallery({
       {nominees.map((nominee) => (
         <li
           key={nominee.id}
-          className="overflow-hidden rounded-lg border border-white/10 bg-surface transition-transform duration-200 ease-reveal motion-safe:hover:-translate-y-0.5"
+          className="overflow-hidden rounded-panel border-2 border-border bg-card transition-transform duration-200 ease-reveal motion-safe:hover:-translate-y-0.5"
         >
           <img
             src={nominee.photoUrl}
@@ -460,12 +453,12 @@ export function NominatingView({
         {meError ? (
           <div className="space-y-3 text-center">
             <ErrorNote message={meError} />
-            <Button variant="secondary" size="sm" onClick={() => void loadMe()}>
+            <Button variant="secondary" onClick={() => void loadMe()}>
               Try again
             </Button>
           </div>
         ) : (
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          <Spinner label="Loading nominations" />
         )}
       </div>
     );
@@ -476,77 +469,59 @@ export function NominatingView({
     setMe({ ...me, nominations: next });
   const newestFirst = [...session.nominees].reverse();
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: Tab.Nominate, label: "Nominate" },
-    { key: Tab.All, label: `Nominations (${session.nominees.length})` },
-  ];
-
   return (
-    <div className="space-y-6">
-      <div role="tablist" className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-surface-deep p-1">
-        {tabs.map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className={cn(
-              "cursor-pointer rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-colors duration-150 ease-reveal",
-              tab === key
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+    <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+      <TabsList>
+        <TabsTrigger value={Tab.Nominate}>Nominate</TabsTrigger>
+        <TabsTrigger value={Tab.All}>
+          Nominations ({session.nominees.length})
+        </TabsTrigger>
+      </TabsList>
 
-      {tab === Tab.Nominate ? (
-        <>
-          <NominateForm
-            onCreated={(nominee) => {
-              setNominations([...nominations, nominee]);
-              void onChanged();
-            }}
-          />
+      <TabsContent value={Tab.Nominate} className="mt-6 space-y-6">
+        <NominateForm
+          onCreated={(nominee) => {
+            setNominations([...nominations, nominee]);
+            void onChanged();
+          }}
+        />
 
-          {nominations.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Your nominations
-              </h2>
-              <ul className="space-y-3">
-                {nominations.map((nominee) => (
-                  <li key={nominee.id}>
-                    <OwnNominationRow
-                      nominee={nominee}
-                      onUpdated={(updated) => {
-                        setNominations(
-                          nominations.map((n) => (n.id === updated.id ? updated : n))
-                        );
-                        void onChanged();
-                      }}
-                      onDeleted={(id) => {
-                        setNominations(nominations.filter((n) => n.id !== id));
-                        void onChanged();
-                      }}
-                    />
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-muted-foreground">
-                Lost access to your nominations, for example after clearing your
-                browser data or switching phones? Ask a host and they can fix
-                it for you.
-              </p>
-            </section>
-          )}
-        </>
-      ) : (
+        {nominations.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold leading-snug">
+              Your nominations
+            </h2>
+            <ul className="space-y-3">
+              {nominations.map((nominee) => (
+                <li key={nominee.id}>
+                  <OwnNominationRow
+                    nominee={nominee}
+                    onUpdated={(updated) => {
+                      setNominations(
+                        nominations.map((n) => (n.id === updated.id ? updated : n))
+                      );
+                      void onChanged();
+                    }}
+                    onDeleted={(id) => {
+                      setNominations(nominations.filter((n) => n.id !== id));
+                      void onChanged();
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-muted">
+              Lost access to your nominations, for example after clearing your
+              browser data or switching phones? Ask a host and they can fix it
+              for you.
+            </p>
+          </section>
+        )}
+      </TabsContent>
+
+      <TabsContent value={Tab.All} className="mt-6">
         <NomineeGallery nominees={newestFirst} />
-      )}
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 }

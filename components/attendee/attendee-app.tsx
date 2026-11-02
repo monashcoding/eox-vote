@@ -4,9 +4,11 @@ import * as React from "react";
 import { PublicSessionDto, PublicStateDto, Stage } from "@/lib/api-types";
 import { api } from "@/lib/client/api";
 import { formatCountdownCopy, useCountdown } from "@/lib/client/use-countdown";
+import { cn } from "@/lib/utils";
 import { usePolling } from "@/lib/client/use-polling";
 import { StagePill } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { EmptyState, Mascot } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/label";
 import { NominatingView } from "./nominating-view";
 
 export function StageBody({
@@ -23,39 +25,55 @@ export function StageBody({
       );
     case Stage.Voting:
       return (
-        <Card className="p-8 text-center">
-          <h2 className="text-xl font-bold">Voting is open.</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Voting swipe deck will appear here soon.
-          </p>
-        </Card>
+        <EmptyState
+          mascot={Mascot.ArmsUp}
+          title="Voting is open"
+          description="The swipe deck will appear here soon."
+        />
       );
     case Stage.Results:
       return (
-        <Card className="p-8 text-center">
-          <h2 className="text-xl font-bold">Results are underway.</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Winners are being announced!
-          </p>
-        </Card>
+        <EmptyState
+          mascot={Mascot.ArmsUp}
+          title="Results are underway"
+          description="Winners are being announced."
+        />
       );
     case Stage.Finished:
       return (
-        <Card className="p-8 text-center">
-          <h2 className="text-xl font-bold">Event finished.</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Thanks for participating in Best Dressed!
-          </p>
-        </Card>
+        <EmptyState
+          mascot={Mascot.ArmsUp}
+          title="Event finished"
+          description="Thanks for taking part in best dressed."
+        />
       );
     case Stage.Pending:
     default:
       return (
-        <p className="text-muted-foreground">
-          Waiting for host to start a session
-        </p>
+        <p className="text-muted">Waiting for host to start a session</p>
       );
   }
+}
+
+/** Renders countdown copy with the time in the live-numeral recipe (guide 4.4). */
+function CountdownText({
+  copy,
+  formatted,
+}: {
+  copy: string;
+  formatted: string;
+}): React.JSX.Element {
+  const at = formatted ? copy.indexOf(formatted) : -1;
+  if (at < 0) return <>{copy}</>;
+  return (
+    <>
+      {copy.slice(0, at)}
+      <span className="inline-block min-w-[5ch] text-right font-semibold tabular-nums text-foreground">
+        {formatted}
+      </span>
+      {copy.slice(at + formatted.length)}
+    </>
+  );
 }
 
 export function AttendeeApp(): React.JSX.Element {
@@ -78,14 +96,15 @@ export function AttendeeApp(): React.JSX.Element {
 
   if (!session || session.stage === Stage.Pending) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          Monash Association of Coding
-        </p>
-        <h1 className="mt-4 text-[clamp(2.75rem,12vw,5.5rem)] font-extrabold leading-none">
-          Best Dressed
+      <main className="flex min-h-dvh flex-col items-center justify-center px-4 text-center sm:px-6">
+        <Eyebrow>Monash Association of Coding</Eyebrow>
+        <h1 className="mt-4 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
+          Best{" "}
+          <span className="inline-block rounded-tag bg-primary px-2 py-0.5 text-primary-foreground">
+            dressed
+          </span>
         </h1>
-        <p className="mt-6 text-muted-foreground">
+        <p className="mt-6 text-base text-muted md:text-sm">
           Waiting for host to start a session
         </p>
       </main>
@@ -95,27 +114,30 @@ export function AttendeeApp(): React.JSX.Element {
   const countdownCopy = formatCountdownCopy(session.stage, countdown);
 
   return (
-    <main className="min-h-dvh flex flex-col bg-background text-foreground">
-      <header className="border-b border-white/10 px-6 py-5">
-        <div className="mx-auto max-w-xl flex flex-col items-center text-center space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Monash Association of Coding
-          </p>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+    <main className="flex min-h-dvh flex-col bg-background text-foreground">
+      <header className="border-b-2 border-border bg-card/95 px-4 py-5 backdrop-blur-xl sm:px-6">
+        <div className="mx-auto flex max-w-xl flex-col items-center space-y-2 text-center">
+          <Eyebrow>Monash Association of Coding</Eyebrow>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <h1 className="text-2xl leading-tight font-semibold tracking-tight sm:text-3xl">
               {session.name}
             </h1>
             <StagePill stage={session.stage} />
           </div>
           {countdownCopy && (
-            <div className="text-sm font-medium text-muted-foreground">
-              {countdownCopy}
-            </div>
+            <p
+              className={cn(
+                "text-sm font-medium",
+                countdown.isExpired ? "text-live" : "text-muted"
+              )}
+            >
+              <CountdownText copy={countdownCopy} formatted={countdown.formatted} />
+            </p>
           )}
         </div>
       </header>
 
-      <section className="flex-1 px-4 py-8 max-w-xl mx-auto w-full">
+      <section className="animate-rise-in mx-auto w-full max-w-xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <StageBody session={session} onChanged={fetchState} />
       </section>
     </main>

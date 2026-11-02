@@ -6,10 +6,12 @@ import { Plus, Trash2, ExternalLink, Star, StarOff, Users, ThumbsUp } from "luci
 import { AdminSessionSummaryDto } from "@/lib/api-types";
 import { api, ApiError } from "@/lib/client/api";
 import { StagePill, CurrentBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Eyebrow, Label } from "@/components/ui/label";
 
 interface SessionsListProps {
   initialSessions?: AdminSessionSummaryDto[];
@@ -50,7 +52,7 @@ export function SessionsList({
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Failed to load sessions");
+        setError("Could not load sessions");
       }
     }
   }, []);
@@ -71,7 +73,7 @@ export function SessionsList({
       .catch((err: unknown) => {
         if (active) {
           setError(
-            err instanceof ApiError ? err.message : "Failed to load sessions"
+            err instanceof ApiError ? err.message : "Could not load sessions"
           );
         }
       });
@@ -107,7 +109,7 @@ export function SessionsList({
       if (err instanceof ApiError) {
         setCreateError(err.message);
       } else {
-        setCreateError("Failed to create session");
+        setCreateError("Could not create the session");
       }
     } finally {
       setCreating(false);
@@ -132,7 +134,7 @@ export function SessionsList({
         }))
       );
     } catch (err: unknown) {
-      alert(err instanceof ApiError ? err.message : "Failed to update current session");
+      alert(err instanceof ApiError ? err.message : "Could not update the current session");
     } finally {
       setActionLoadingId(null);
     }
@@ -147,48 +149,46 @@ export function SessionsList({
       setConfirmDeleteId(null);
       await fetchSessions();
     } catch (err: unknown) {
-      alert(err instanceof ApiError ? err.message : "Failed to delete session");
+      alert(err instanceof ApiError ? err.message : "Could not delete the session");
     } finally {
       setActionLoadingId(null);
     }
   };
 
   return (
-    <div className="space-y-8">
-      {/* Top action bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <Eyebrow>Host console</Eyebrow>
+          <h2 className="text-2xl leading-tight font-semibold tracking-tight sm:text-3xl">
             Sessions
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Create, manage and activate event voting sessions.
+          <p className="text-sm text-muted">
+            Create, manage and choose the session attendees see.
           </p>
         </div>
         <Button
+          variant={showCreate ? "secondary" : "default"}
           onClick={() => setShowCreate(!showCreate)}
-          className="self-start sm:self-auto"
+          className="w-full md:w-auto"
         >
-          <Plus className="h-4 w-4" />
-          <span>{showCreate ? "Cancel" : "New Session"}</span>
+          <Plus />
+          <span>{showCreate ? "Cancel" : "New session"}</span>
         </Button>
       </div>
 
-      {/* Create form */}
       {showCreate && (
-        <Card className="border-white/15 bg-surface-deep">
+        <Card className="animate-rise-in">
           <CardHeader>
-            <CardTitle className="text-base font-semibold">
-              Create New Session
-            </CardTitle>
+            <CardTitle>Create a session</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="session-name">Session Name</Label>
+                <Label htmlFor="session-name">Session name</Label>
                 <Input
                   id="session-name"
-                  placeholder="e.g. End of Exams Gala 2026"
+                  placeholder="For example, End of exams gala 2026"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={80}
@@ -199,7 +199,7 @@ export function SessionsList({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="nom-mins">Nominating Timer (Minutes)</Label>
+                  <Label htmlFor="nom-mins">Nominating timer (minutes)</Label>
                   <Input
                     id="nom-mins"
                     type="number"
@@ -208,12 +208,10 @@ export function SessionsList({
                     value={nominatingMinutes}
                     onChange={(e) => setNominatingMinutes(Number(e.target.value))}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    0 = no timer for nominations
-                  </p>
+                  <p className="text-xs text-muted">0 means no timer for nominations</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="vote-mins">Voting Timer (Minutes)</Label>
+                  <Label htmlFor="vote-mins">Voting timer (minutes)</Label>
                   <Input
                     id="vote-mins"
                     type="number"
@@ -222,35 +220,27 @@ export function SessionsList({
                     value={votingMinutes}
                     onChange={(e) => setVotingMinutes(Number(e.target.value))}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    0 = no timer for voting
-                  </p>
+                  <p className="text-xs text-muted">0 means no timer for voting</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-1">
+              <label
+                htmlFor="auto-advance"
+                className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground md:min-h-0"
+              >
                 <input
                   id="auto-advance"
                   type="checkbox"
                   checked={autoAdvance}
                   onChange={(e) => setAutoAdvance(e.target.checked)}
-                  className="h-4 w-4 rounded border-white/20 bg-surface text-accent focus:ring-accent"
+                  className="size-5 shrink-0 cursor-pointer accent-primary md:size-4"
                 />
-                <Label htmlFor="auto-advance" className="cursor-pointer normal-case text-sm tracking-normal text-foreground">
-                  Auto-advance stage when timer expires
-                </Label>
-              </div>
+                Move to the next stage when the timer ends
+              </label>
 
-              {createError && (
-                <div
-                  role="alert"
-                  className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
-                >
-                  {createError}
-                </div>
-              )}
+              <ErrorNote message={createError} />
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex flex-col-reverse gap-2 pt-2 md:flex-row md:justify-end md:gap-3">
                 <Button
                   type="button"
                   variant="ghost"
@@ -261,9 +251,10 @@ export function SessionsList({
                 </Button>
                 <Button
                   type="submit"
+                  size="lg"
                   disabled={creating || !name.trim()}
                 >
-                  {creating ? "Creating..." : "Create Session"}
+                  {creating ? "Creating..." : "Create session"}
                 </Button>
               </div>
             </form>
@@ -271,24 +262,23 @@ export function SessionsList({
         </Card>
       )}
 
-      {/* Global error banner */}
-      {error && (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
-        >
-          {error}
-        </div>
-      )}
+      <ErrorNote message={error} />
 
-      {/* Sessions list */}
       <div className="space-y-3">
         {sessions.length === 0 ? (
-          <Card className="p-12 text-center border-dashed border-white/10">
-            <p className="text-sm text-muted-foreground">
-              No sessions yet. Click &quot;New Session&quot; to get started.
-            </p>
-          </Card>
+          <EmptyState
+            mascot={Mascot.Wave}
+            title="No sessions yet"
+            description="Create your first session to open nominations."
+            action={
+              !showCreate && (
+                <Button size="lg" onClick={() => setShowCreate(true)}>
+                  <Plus />
+                  New session
+                </Button>
+              )
+            }
+          />
         ) : (
           sessions.map((s) => {
             const isCurrent = s.id === currentSessionId;
@@ -298,13 +288,14 @@ export function SessionsList({
             return (
               <Card
                 key={s.id}
-                className={`transition-colors duration-150 ${
-                  isCurrent ? "border-accent/40 bg-surface/90" : "bg-surface"
-                }`}
+                className={cn(
+                  "p-4 sm:p-4 md:hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
+                  "duration-200 ease-reveal",
+                  isCurrent && "border-primary"
+                )}
               >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  {/* Left: Info */}
-                  <div className="space-y-1.5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2.5">
                       <h3 className="text-base font-semibold text-foreground">
                         {s.name}
@@ -312,13 +303,13 @@ export function SessionsList({
                       <StagePill stage={s.stage} />
                       {isCurrent && <CurrentBadge />}
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-muted">
                       <span className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5" />
+                        <Users className="size-3.5" />
                         {s.nomineeCount} {s.nomineeCount === 1 ? "nominee" : "nominees"}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <ThumbsUp className="h-3.5 w-3.5" />
+                        <ThumbsUp className="size-3.5" />
                         {s.voteCount} {s.voteCount === 1 ? "vote" : "votes"}
                       </span>
                       <span>
@@ -327,44 +318,43 @@ export function SessionsList({
                     </div>
                   </div>
 
-                  {/* Right: Actions */}
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
-                      variant={isCurrent ? "secondary" : "ghost"}
+                      variant={isCurrent ? "secondary" : "outline"}
                       size="sm"
                       onClick={() => handleToggleCurrent(s.id)}
                       disabled={isBusy}
-                      title={isCurrent ? "Unset current session" : "Make current session"}
                     >
                       {isCurrent ? (
                         <>
-                          <StarOff className="h-3.5 w-3.5 text-muted-foreground" />
+                          <StarOff />
                           <span>Unset current</span>
                         </>
                       ) : (
                         <>
-                          <Star className="h-3.5 w-3.5 text-accent" />
+                          <Star />
                           <span>Make current</span>
                         </>
                       )}
                     </Button>
 
-                    <Link href={`/admin/sessions/${s.id}`}>
-                      <Button variant="secondary" size="sm">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        <span>Manage</span>
-                      </Button>
+                    <Link
+                      href={`/admin/sessions/${s.id}`}
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
+                      <ExternalLink />
+                      <span>Manage</span>
                     </Link>
 
                     {isConfirmingDelete ? (
-                      <div className="flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 p-1">
+                      <div className="flex items-center gap-1.5 rounded-control border-2 border-danger/50 bg-danger/10 p-1">
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => handleDelete(s.id)}
                           disabled={isBusy}
                         >
-                          Confirm
+                          Confirm delete
                         </Button>
                         <Button
                           variant="ghost"
@@ -378,13 +368,13 @@ export function SessionsList({
                     ) : (
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => setConfirmDeleteId(s.id)}
                         disabled={isBusy}
-                        title="Delete session"
-                        className="text-muted-foreground hover:text-destructive"
+                        aria-label={`Delete ${s.name}`}
+                        className="hover:text-danger"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 />
                       </Button>
                     )}
                   </div>

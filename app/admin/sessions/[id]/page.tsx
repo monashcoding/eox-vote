@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AdminGate } from "@/components/admin/admin-gate";
 import { SessionDetailView } from "@/components/admin/session-detail-view";
 
 export const metadata: Metadata = {
-  title: "Session Details | MAC Best Dressed",
+  title: "Session | MAC best dressed",
   robots: {
     index: false,
     follow: false,
@@ -25,13 +26,9 @@ export default function SessionDetailPage(props: SessionPageProps) {
     <AdminGate>
       <Suspense
         fallback={
-          <div className="flex min-h-[50vh] items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Loading session...
-              </span>
-            </div>
+          <div className="space-y-6" aria-busy="true">
+            <Skeleton className="h-24" />
+            <Skeleton className="h-96" />
           </div>
         }
       >
