@@ -39,6 +39,8 @@ export interface PublicSessionDto {
   autoAdvance: boolean;
   /** Nominating and voting only, otherwise empty. Oldest first. */
   nominees: PublicNomineeDto[];
+  /** Results and finished only, otherwise null. */
+  results: PublicResultsDto | null;
 }
 
 export interface PublicStateDto {
@@ -89,9 +91,12 @@ export interface AdminSessionDetailDto {
   finishedAt: number | null;
   serverNow: number;
   nominees: AdminNomineeDto[];
-  revealedCount?: number;
-  totalRevealSteps?: number;
-  podium?: PodiumPlaceDto[];
+  /** Reveal steps shown to attendees so far (results stage). */
+  revealedCount: number;
+  /** Number of podium places to reveal for the current votes. */
+  totalRevealSteps: number;
+  /** Podium for the current votes, 1st place first. Hosts only. */
+  podium: PodiumPlaceDto[];
 }
 
 export const ControlAction = {
@@ -102,6 +107,8 @@ export const ControlAction = {
   ClearTimer: "clearTimer",
   AdjustTimer: "adjustTimer",
   SetTimer: "setTimer",
+  RevealNext: "revealNext",
+  HideLast: "hideLast",
 } as const;
 
 export type ControlAction = (typeof ControlAction)[keyof typeof ControlAction];
@@ -111,7 +118,9 @@ export type SimpleControlAction =
   | typeof ControlAction.Previous
   | typeof ControlAction.Pause
   | typeof ControlAction.Resume
-  | typeof ControlAction.ClearTimer;
+  | typeof ControlAction.ClearTimer
+  | typeof ControlAction.RevealNext
+  | typeof ControlAction.HideLast;
 
 export type ControlRequest =
   | { action: SimpleControlAction }

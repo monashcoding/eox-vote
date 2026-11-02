@@ -18,6 +18,8 @@ const controlSchema = z.union([
       ControlAction.Pause,
       ControlAction.Resume,
       ControlAction.ClearTimer,
+      ControlAction.RevealNext,
+      ControlAction.HideLast,
     ]),
   }),
   z.object({

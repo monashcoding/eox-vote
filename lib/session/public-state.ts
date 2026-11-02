@@ -1,17 +1,20 @@
 import {
   PublicNomineeDto,
+  PublicResultsDto,
   PublicSessionDto,
   PublicStateDto,
   Stage,
 } from "../api-types";
 import { sessions } from "../db/schema";
 import { HttpError } from "../http";
-import { listPublicNominees } from "../nominees";
+import { listAdminNominees, listPublicNominees } from "../nominees";
 import { getCurrentSessionId, syncSession, toTimerDto } from "./index";
+import { buildPodium, publicResults } from "./ranking";
 
 export function toPublicSessionDto(
   session: typeof sessions.$inferSelect,
-  nominees: PublicNomineeDto[]
+  nominees: PublicNomineeDto[],
+  results: PublicResultsDto | null
 ): PublicSessionDto {
   return {
     id: session.id,
@@ -20,6 +23,7 @@ export function toPublicSessionDto(
     timer: toTimerDto(session.timerEndsAt, session.timerRemainingMs),
     autoAdvance: session.autoAdvance,
     nominees,
+    results,
   };
 }
 
@@ -75,7 +79,17 @@ export async function getPublicState(): Promise<PublicStateDto> {
     const nominees = showNominees
       ? await listPublicNominees(sessionRow.id)
       : [];
-    publicSession = toPublicSessionDto(sessionRow, nominees);
+    const showResults =
+      sessionRow.stage === Stage.Results ||
+      sessionRow.stage === Stage.Finished;
+    const results = showResults
+      ? publicResults(
+          sessionRow.stage as Stage,
+          buildPodium(await listAdminNominees(sessionRow.id)),
+          sessionRow.revealedCount
+        )
+      : null;
+    publicSession = toPublicSessionDto(sessionRow, nominees, results);
   }
 
   cachedState = {

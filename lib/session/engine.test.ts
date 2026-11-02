@@ -673,3 +673,72 @@ describe("Session Engine: Auto-advance", () => {
     assert.equal(res.stage, Stage.Nominating);
   });
 });
+
+describe("Session Engine: revealNext and hideLast", () => {
+  const now = 5_000_000;
+
+  it("revealNext increments revealedCount up to totalRevealSteps", () => {
+    const session = createMockSession({ stage: Stage.Results, revealedCount: 0 });
+    const one = applyControl(session, { action: ControlAction.RevealNext }, now, 3);
+    assert.equal(one.revealedCount, 1);
+    const two = applyControl(one, { action: ControlAction.RevealNext }, now, 3);
+    assert.equal(two.revealedCount, 2);
+    const three = applyControl(two, { action: ControlAction.RevealNext }, now, 3);
+    assert.equal(three.revealedCount, 3);
+  });
+
+  it("revealNext at totalRevealSteps is an EngineError (409)", () => {
+    const session = createMockSession({ stage: Stage.Results, revealedCount: 3 });
+    assert.throws(
+      () => applyControl(session, { action: ControlAction.RevealNext }, now, 3),
+      (err: unknown) => err instanceof EngineError && err.status === 409
+    );
+  });
+
+  it("revealNext with no steps (totalRevealSteps = 0) is an EngineError", () => {
+    const session = createMockSession({ stage: Stage.Results });
+    assert.throws(
+      () => applyControl(session, { action: ControlAction.RevealNext }, now),
+      EngineError
+    );
+  });
+
+  it("hideLast decrements revealedCount", () => {
+    const session = createMockSession({ stage: Stage.Results, revealedCount: 2 });
+    const res = applyControl(session, { action: ControlAction.HideLast }, now, 3);
+    assert.equal(res.revealedCount, 1);
+  });
+
+  it("hideLast at 0 is an EngineError (409)", () => {
+    const session = createMockSession({ stage: Stage.Results, revealedCount: 0 });
+    assert.throws(
+      () => applyControl(session, { action: ControlAction.HideLast }, now, 3),
+      (err: unknown) => err instanceof EngineError && err.status === 409
+    );
+  });
+
+  it("hideLast drops a stale counter above the total to total - 1", () => {
+    const session = createMockSession({ stage: Stage.Results, revealedCount: 5 });
+    const res = applyControl(session, { action: ControlAction.HideLast }, now, 2);
+    assert.equal(res.revealedCount, 1);
+  });
+
+  it("both actions are rejected outside the results stage", () => {
+    for (const stage of [
+      Stage.Pending,
+      Stage.Nominating,
+      Stage.Voting,
+      Stage.Finished,
+    ]) {
+      const session = createMockSession({ stage, revealedCount: 1 });
+      assert.throws(
+        () => applyControl(session, { action: ControlAction.RevealNext }, now, 3),
+        EngineError
+      );
+      assert.throws(
+        () => applyControl(session, { action: ControlAction.HideLast }, now, 3),
+        EngineError
+      );
+    }
+  });
+});

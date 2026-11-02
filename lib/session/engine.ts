@@ -91,10 +91,16 @@ export function applyAutoAdvance<T extends EngineSessionInput>(
   return applyControl(session, { action: ControlAction.Next }, now);
 }
 
+/**
+ * Applies one control action. `totalRevealSteps` is the number of podium
+ * groups for the session's current votes; only `revealNext` and `hideLast`
+ * read it (the engine itself has no access to votes).
+ */
 export function applyControl<T extends EngineSessionInput>(
   session: T,
   request: ControlRequest,
-  now: number = Date.now()
+  now: number = Date.now(),
+  totalRevealSteps: number = 0
 ): T & EngineSessionOutput {
   const normalized = normalizeSession(session);
   let { stage, startedAt, finishedAt, timerEndsAt, timerRemainingMs, revealedCount } =
@@ -288,6 +294,29 @@ export function applyControl<T extends EngineSessionInput>(
       }
       timerEndsAt = null;
       timerRemainingMs = null;
+      break;
+    }
+
+    case ControlAction.RevealNext: {
+      if (stage !== Stage.Results) {
+        throw new EngineError("Places can only be revealed in the results stage");
+      }
+      if (revealedCount >= totalRevealSteps) {
+        throw new EngineError("Every place has already been revealed");
+      }
+      revealedCount += 1;
+      break;
+    }
+
+    case ControlAction.HideLast: {
+      if (stage !== Stage.Results) {
+        throw new EngineError("Places can only be hidden in the results stage");
+      }
+      if (revealedCount <= 0) {
+        throw new EngineError("No place has been revealed yet");
+      }
+      // A stale counter above the total (a nominee was removed) hides the last visible step.
+      revealedCount = Math.max(0, Math.min(revealedCount, totalRevealSteps) - 1);
       break;
     }
 

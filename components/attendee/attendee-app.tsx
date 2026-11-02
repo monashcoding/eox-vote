@@ -7,9 +7,9 @@ import { formatCountdownCopy, useCountdown } from "@/lib/client/use-countdown";
 import { cn } from "@/lib/utils";
 import { usePolling } from "@/lib/client/use-polling";
 import { StagePill } from "@/components/ui/badge";
-import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 import { NominatingView } from "./nominating-view";
+import { ResultsView } from "./results-view";
 import { VotingView } from "./voting-view";
 
 export function StageBody({
@@ -27,21 +27,8 @@ export function StageBody({
     case Stage.Voting:
       return <VotingView key={session.id} session={session} onChanged={onChanged} />;
     case Stage.Results:
-      return (
-        <EmptyState
-          mascot={Mascot.ArmsUp}
-          title="Results are underway"
-          description="Winners are being announced."
-        />
-      );
     case Stage.Finished:
-      return (
-        <EmptyState
-          mascot={Mascot.ArmsUp}
-          title="Event finished"
-          description="Thanks for taking part in best dressed."
-        />
-      );
+      return <ResultsView key={session.id} session={session} />;
     case Stage.Pending:
     default:
       return (

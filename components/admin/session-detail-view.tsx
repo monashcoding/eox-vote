@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NomineesPanel } from "./nominees-panel";
+import { ResultsPanel } from "./results-panel";
 import { SessionHeader } from "./session-header";
 import { SessionSettingsPanel } from "./session-settings-panel";
 import { SessionStagePanel } from "./session-stage-panel";
@@ -89,7 +90,7 @@ export function SessionDetailView({
       <div className="space-y-6 sm:space-y-8">
         <SessionStagePanel session={session} onRefresh={fetchSession} />
         <NomineesPanel session={session} onRefresh={fetchSession} />
-        {/* Results Panel (Results agent adds here) */}
+        <ResultsPanel session={session} onRefresh={fetchSession} />
         {/* QR Code Panel (QR agent adds here) */}
 
         <SessionSettingsPanel session={session} onRefresh={fetchSession} />

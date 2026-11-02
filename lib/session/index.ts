@@ -8,6 +8,7 @@ import {
   TimerDto,
 } from "../api-types";
 import { applyAutoAdvance, applyControl, canAutoAdvance } from "./engine";
+import { buildPodium, clampRevealed } from "./ranking";
 import { invalidatePublicState } from "./public-state";
 import { db, type DbTransaction } from "../db";
 import { appSettings, nominees, sessions, votes } from "../db/schema";
@@ -48,6 +49,7 @@ export function toAdminSessionDetailDto(
   currentSessionId: string | null,
   adminNominees: AdminNomineeDto[]
 ): AdminSessionDetailDto {
+  const podium = buildPodium(adminNominees);
   return {
     id: session.id,
     name: session.name,
@@ -62,6 +64,9 @@ export function toAdminSessionDetailDto(
     finishedAt: session.finishedAt ? session.finishedAt.getTime() : null,
     serverNow: Date.now(),
     nominees: adminNominees,
+    revealedCount: clampRevealed(session.revealedCount, podium.length),
+    totalRevealSteps: podium.length,
+    podium,
   };
 }
 
@@ -223,7 +228,12 @@ export async function applyAdminSessionControl(
       iterations++;
     }
 
-    const nextState = applyControl(current, request, now);
+    const nextState = applyControl(
+      current,
+      request,
+      now,
+      buildPodium(await listAdminNominees(current.id)).length
+    );
 
     const [updated] = await tx
       .update(sessions)
