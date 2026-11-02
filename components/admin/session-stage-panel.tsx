@@ -221,7 +221,7 @@ export function SessionStagePanel({
                     })
                   }
                 >
-                  <Rewind />
+                  <Rewind fill="currentColor" />
                   {prevLabel}
                 </Button>
               )}
@@ -237,7 +237,7 @@ export function SessionStagePanel({
                   }
                 >
                   {nextLabel}
-                  <FastForward />
+                  <FastForward fill="currentColor" />
                 </Button>
               )}
             </>
