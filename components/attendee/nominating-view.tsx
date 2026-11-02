@@ -316,7 +316,6 @@ function OwnNominationRow({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
               disabled={busy}
               onClick={() => setEditing(false)}
             >
@@ -324,7 +323,6 @@ function OwnNominationRow({
             </Button>
             <Button
               type="submit"
-              size="sm"
               disabled={busy || !firstName.trim() || !lastName.trim()}
             >
               {busy ? "Saving..." : "Save changes"}
@@ -348,12 +346,19 @@ function OwnNominationRow({
         </p>
         {confirmingDelete ? (
           <div className="flex items-center gap-1">
-            <Button variant="destructive" size="sm" disabled={busy} onClick={handleDelete}>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={busy}
+              onClick={handleDelete}
+              className="min-h-11 md:min-h-0"
+            >
               {busy ? "Deleting..." : "Confirm delete"}
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              className="min-h-11 md:min-h-0"
               disabled={busy}
               onClick={() => setConfirmingDelete(false)}
             >

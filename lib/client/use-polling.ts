@@ -15,35 +15,39 @@ export function usePolling(
     if (!enabled) return;
 
     let isSubscribed = true;
-    let timerId: NodeJS.Timeout | null = null;
+    let running = false;
+    let timerId: NodeJS.Timeout | undefined;
 
+    // One request at a time: the next tick is scheduled only after the
+    // previous one settles, so a slow response can never land after a newer
+    // one and roll the view back.
     const tick = async () => {
-      if (document.hidden) return;
+      if (running || !isSubscribed) return;
+      clearTimeout(timerId);
+      running = true;
       try {
-        await savedCallback.current();
+        if (!document.hidden) await savedCallback.current();
       } catch (err) {
         console.error("Polling error:", err);
+      } finally {
+        running = false;
+        if (isSubscribed) {
+          timerId = setTimeout(() => void tick(), intervalMs);
+        }
       }
     };
 
-    // Initial fetch
     void tick();
 
-    timerId = setInterval(() => {
-      void tick();
-    }, intervalMs);
-
     const handleVisibilityChange = () => {
-      if (!document.hidden && isSubscribed) {
-        void tick();
-      }
+      if (!document.hidden) void tick();
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       isSubscribed = false;
-      clearInterval(timerId);
+      clearTimeout(timerId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [intervalMs, enabled]);

@@ -43,7 +43,6 @@ export function VoteGrid({
               <Button
                 type="button"
                 variant={voted ? "secondary" : "outline"}
-                size="sm"
                 aria-pressed={voted}
                 aria-label={voted ? `Remove vote for ${name}` : `Vote for ${name}`}
                 disabled={pendingIds.has(nominee.id)}

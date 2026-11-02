@@ -25,6 +25,7 @@ export function SessionsList({
 }: SessionsListProps): React.JSX.Element {
   const adminApi = useAdminApi();
   const [sessions, setSessions] = React.useState<AdminSessionSummaryDto[]>(initialSessions);
+  const [actionError, setActionError] = React.useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(initialCurrentSessionId);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -122,6 +123,7 @@ export function SessionsList({
     const isCurrent = sessionId === currentSessionId;
     const nextSessionId = isCurrent ? null : sessionId;
     setActionLoadingId(sessionId);
+    setActionError(null);
 
     try {
       await adminApi("/api/admin/current", {
@@ -136,7 +138,9 @@ export function SessionsList({
         }))
       );
     } catch (err: unknown) {
-      alert(err instanceof ApiError ? err.message : "Could not update the current session");
+      setActionError(
+        err instanceof ApiError ? err.message : "Could not update the current session"
+      );
     } finally {
       setActionLoadingId(null);
     }
@@ -144,6 +148,7 @@ export function SessionsList({
 
   const handleDelete = async (sessionId: string) => {
     setActionLoadingId(sessionId);
+    setActionError(null);
     try {
       await adminApi(`/api/admin/sessions/${sessionId}`, {
         method: "DELETE",
@@ -151,7 +156,9 @@ export function SessionsList({
       setConfirmDeleteId(null);
       await fetchSessions();
     } catch (err: unknown) {
-      alert(err instanceof ApiError ? err.message : "Could not delete the session");
+      setActionError(
+        err instanceof ApiError ? err.message : "Could not delete the session"
+      );
     } finally {
       setActionLoadingId(null);
     }
@@ -264,7 +271,7 @@ export function SessionsList({
         </Card>
       )}
 
-      <ErrorNote message={error} />
+      <ErrorNote message={error ?? actionError} />
 
       <div className="space-y-3">
         {sessions.length === 0 ? (

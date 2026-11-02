@@ -16,7 +16,9 @@ export function TabsList({
   return (
     <TabsPrimitive.List
       className={cn(
-        "grid h-12 w-full grid-flow-col auto-cols-fr items-center rounded-control border-2 border-border bg-surface-soft p-1 text-muted md:h-9",
+        // Mobile height comes from the 44px triggers plus padding and border,
+        // so the triggers never overflow the list. Desktop uses the 36px list.
+        "grid w-full grid-flow-col auto-cols-fr items-center rounded-control border-2 border-border bg-surface-soft p-1 text-muted md:h-9",
         className
       )}
       {...props}
@@ -31,7 +33,7 @@ export function TabsTrigger({
   return (
     <TabsPrimitive.Tab
       className={cn(
-        "inline-flex h-full min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-control border-2 border-transparent px-3 py-1 text-sm font-medium transition-colors duration-150 ease-reveal outline-none md:min-h-0",
+        "inline-flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-control border-2 border-transparent px-3 py-1 text-sm font-medium transition-colors duration-150 ease-reveal outline-none md:h-full md:min-h-0",
         "hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
         "data-active:border-border-strong data-active:bg-card data-active:font-semibold data-active:text-foreground",
         className

@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/client/api";
 import { useAdminApi } from "./admin-gate";
 import { CurrentBadge, StagePill } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ErrorNote } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 
 interface SessionHeaderProps {
@@ -21,9 +22,11 @@ export function SessionHeader({
 }: SessionHeaderProps): React.JSX.Element {
   const adminApi = useAdminApi();
   const [updatingCurrent, setUpdatingCurrent] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleToggleCurrent = async () => {
     setUpdatingCurrent(true);
+    setError(null);
     try {
       await adminApi("/api/admin/current", {
         method: "PUT",
@@ -33,7 +36,7 @@ export function SessionHeader({
       });
       await onRefresh();
     } catch (err: unknown) {
-      alert(
+      setError(
         err instanceof ApiError
           ? err.message
           : "Could not update the current session"
@@ -87,6 +90,7 @@ export function SessionHeader({
           )}
         </Button>
       </div>
+      <ErrorNote message={error} />
     </div>
   );
 }

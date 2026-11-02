@@ -78,6 +78,7 @@ export function SessionSettingsPanel({
 
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   const changes = changedFields(draft, session);
   const dirty = Object.keys(changes).length > 0;
@@ -116,13 +117,14 @@ export function SessionSettingsPanel({
 
   const handleDelete = async () => {
     setDeleting(true);
+    setDeleteError(null);
     try {
       await adminApi(`/api/admin/sessions/${session.id}`, {
         method: "DELETE",
       });
       router.push("/admin");
     } catch (err: unknown) {
-      alert(
+      setDeleteError(
         err instanceof ApiError ? err.message : "Could not delete the session"
       );
       setDeleting(false);
@@ -273,6 +275,7 @@ export function SessionSettingsPanel({
               </Button>
             )}
           </div>
+          <ErrorNote message={deleteError} className="mt-4" />
         </CardContent>
       </Card>
     </div>
