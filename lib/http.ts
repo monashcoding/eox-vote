@@ -11,6 +11,17 @@ export class HttpError extends Error {
   }
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Route ids that are not UUIDs can never match a row; report 404 instead of a DB error. */
+export function requireUuid(id: string, notFoundMessage: string): string {
+  if (!UUID_PATTERN.test(id)) {
+    throw new HttpError(404, notFoundMessage);
+  }
+  return id;
+}
+
 export function errorResponse(status: number, message: string): NextResponse {
   return NextResponse.json({ error: message }, { status });
 }
@@ -47,10 +58,9 @@ export function handleRoute<TContext = unknown>(
         const message = err.issues[0]?.message ?? "Invalid request";
         return errorResponse(400, message);
       }
+      // Details stay in the server log; driver and stack text never reach clients.
       console.error("Unhandled error in route handler:", err);
-      const message =
-        err instanceof Error ? err.message : "Internal server error";
-      return errorResponse(500, message);
+      return errorResponse(500, "Internal server error");
     }
   };
 }

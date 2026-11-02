@@ -1,7 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { AdminNomineeDto, PublicNomineeDto } from "./api-types";
 import { db, type DbReader } from "./db";
-import { HttpError } from "./http";
+import { requireUuid } from "./http";
 import { nominees, votes } from "./db/schema";
 
 type NomineeRow = typeof nominees.$inferSelect;
@@ -76,13 +76,6 @@ export async function listOwnedNominees(
   return rows.map(toPublicNomineeDto);
 }
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Route ids that are not UUIDs can never match a row; report 404 instead of a DB error. */
 export function requireNomineeId(id: string): string {
-  if (!UUID_PATTERN.test(id)) {
-    throw new HttpError(404, "Nomination not found");
-  }
-  return id;
+  return requireUuid(id, "Nomination not found");
 }

@@ -5,6 +5,7 @@ import { handleRoute, HttpError } from "@/lib/http";
 import {
   deleteAdminSession,
   getAdminSessionDetail,
+  requireSessionId,
   updateAdminSession,
 } from "@/lib/session";
 
@@ -27,7 +28,7 @@ const updateSessionSchema = z.object({
 export const GET = handleRoute<RouteContext>(
   async (_request: Request, { params }) => {
     await requireAdmin();
-    const { id } = await params;
+    const id = requireSessionId((await params).id);
     const detail = await getAdminSessionDetail(id);
     return NextResponse.json(detail);
   }
@@ -36,7 +37,7 @@ export const GET = handleRoute<RouteContext>(
 export const PATCH = handleRoute<RouteContext>(
   async (request: Request, { params }) => {
     await requireAdmin();
-    const { id } = await params;
+    const id = requireSessionId((await params).id);
 
     let body: unknown;
     try {
@@ -54,7 +55,7 @@ export const PATCH = handleRoute<RouteContext>(
 export const DELETE = handleRoute<RouteContext>(
   async (_request: Request, { params }) => {
     await requireAdmin();
-    const { id } = await params;
+    const id = requireSessionId((await params).id);
     await deleteAdminSession(id);
     return new NextResponse(null, { status: 204 });
   }

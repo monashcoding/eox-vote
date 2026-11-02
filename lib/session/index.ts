@@ -17,7 +17,7 @@ import { buildPodium, clampRevealed } from "./ranking";
 import { invalidatePublicState } from "./public-state";
 import { db, type DbReader, type DbTransaction } from "../db";
 import { appSettings, nominees, sessions, votes } from "../db/schema";
-import { HttpError } from "../http";
+import { HttpError, requireUuid } from "../http";
 import { listAdminNominees } from "../nominees";
 
 export function toTimerDto(
@@ -87,25 +87,32 @@ export async function getCurrentSessionId(
   return settings?.currentSessionId ?? null;
 }
 
+export function requireSessionId(id: string): string {
+  return requireUuid(id, "Session not found");
+}
+
 export async function setCurrentSession(
   sessionId: string | null
 ): Promise<{ currentSessionId: string | null }> {
-  if (sessionId !== null) {
-    const [existing] = await db
-      .select({ id: sessions.id })
-      .from(sessions)
-      .where(eq(sessions.id, sessionId))
-      .limit(1);
+  await db.transaction(async (tx) => {
+    if (sessionId !== null) {
+      // Share lock: a concurrent delete waits, so the FK update cannot fail.
+      const [existing] = await tx
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
+        .for("share");
 
-    if (!existing) {
-      throw new HttpError(404, "Session not found");
+      if (!existing) {
+        throw new HttpError(404, "Session not found");
+      }
     }
-  }
 
-  await db
-    .update(appSettings)
-    .set({ currentSessionId: sessionId })
-    .where(eq(appSettings.id, 1));
+    await tx
+      .update(appSettings)
+      .set({ currentSessionId: sessionId })
+      .where(eq(appSettings.id, 1));
+  });
 
   invalidatePublicState();
   return { currentSessionId: sessionId };

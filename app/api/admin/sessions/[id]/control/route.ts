@@ -3,7 +3,7 @@ import { z } from "zod";
 import { ControlAction, Stage, type ControlRequest } from "@/lib/api-types";
 import { requireAdmin } from "@/lib/auth/admin";
 import { handleRoute, HttpError } from "@/lib/http";
-import { applyAdminSessionControl } from "@/lib/session";
+import { applyAdminSessionControl, requireSessionId } from "@/lib/session";
 import { EngineError, MAX_TIMER_MS } from "@/lib/session/engine";
 
 interface RouteContext {
@@ -41,7 +41,7 @@ const controlSchema = z.union([
 export const POST = handleRoute<RouteContext>(
   async (request: Request, { params }) => {
     await requireAdmin();
-    const { id } = await params;
+    const id = requireSessionId((await params).id);
 
     let body: unknown;
     try {
