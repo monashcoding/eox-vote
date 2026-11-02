@@ -16,18 +16,59 @@ interface SessionSettingsPanelProps {
   onRefresh: () => Promise<void>;
 }
 
+type SettingsFields = Pick<
+  AdminSessionDetailDto,
+  "name" | "nominatingMinutes" | "votingMinutes" | "autoAdvance"
+>;
+
+/** Draft fields that differ from the saved session; trims the name first. */
+function changedFields(
+  draft: Partial<SettingsFields>,
+  session: AdminSessionDetailDto
+): Partial<SettingsFields> {
+  const changes: Partial<SettingsFields> = {};
+  const name = draft.name?.trim();
+  if (name !== undefined && name !== session.name) changes.name = name;
+  if (
+    draft.nominatingMinutes !== undefined &&
+    draft.nominatingMinutes !== session.nominatingMinutes
+  ) {
+    changes.nominatingMinutes = draft.nominatingMinutes;
+  }
+  if (
+    draft.votingMinutes !== undefined &&
+    draft.votingMinutes !== session.votingMinutes
+  ) {
+    changes.votingMinutes = draft.votingMinutes;
+  }
+  if (
+    draft.autoAdvance !== undefined &&
+    draft.autoAdvance !== session.autoAdvance
+  ) {
+    changes.autoAdvance = draft.autoAdvance;
+  }
+  return changes;
+}
+
 export function SessionSettingsPanel({
   session,
   onRefresh,
 }: SessionSettingsPanelProps): React.JSX.Element {
   const router = useRouter();
 
-  const [name, setName] = React.useState(session.name);
-  const [nominatingMinutes, setNominatingMinutes] = React.useState(
-    session.nominatingMinutes
-  );
-  const [votingMinutes, setVotingMinutes] = React.useState(session.votingMinutes);
-  const [autoAdvance, setAutoAdvance] = React.useState(session.autoAdvance);
+  // Only fields the host has edited live here. Everything else shows the
+  // polled session, so changes from the stage panel or another tab show up
+  // and a save never sends values the host did not touch.
+  const [draft, setDraft] = React.useState<Partial<SettingsFields>>({});
+  const name = draft.name ?? session.name;
+  const nominatingMinutes =
+    draft.nominatingMinutes ?? session.nominatingMinutes;
+  const votingMinutes = draft.votingMinutes ?? session.votingMinutes;
+  const autoAdvance = draft.autoAdvance ?? session.autoAdvance;
+  const editField = <K extends keyof SettingsFields>(
+    key: K,
+    value: SettingsFields[K]
+  ) => setDraft((current) => ({ ...current, [key]: value }));
 
   const [saving, setSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
@@ -36,10 +77,16 @@ export function SessionSettingsPanel({
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
 
+  const changes = changedFields(draft, session);
+  const dirty = Object.keys(changes).length > 0;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || saving) return;
+    if (!dirty) {
+      setDraft({});
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -48,15 +95,11 @@ export function SessionSettingsPanel({
     try {
       await api(`/api/admin/sessions/${session.id}`, {
         method: "PATCH",
-        body: JSON.stringify({
-          name: name.trim(),
-          nominatingMinutes,
-          votingMinutes,
-          autoAdvance,
-        }),
+        body: JSON.stringify(changes),
       });
-      setSaveSuccess(true);
       await onRefresh();
+      setDraft({});
+      setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err: unknown) {
       if (err instanceof ApiError) {
@@ -98,7 +141,7 @@ export function SessionSettingsPanel({
               <Input
                 id="edit-name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => editField("name", e.target.value)}
                 maxLength={80}
                 required
                 disabled={saving}
@@ -114,7 +157,9 @@ export function SessionSettingsPanel({
                   min={0}
                   max={600}
                   value={nominatingMinutes}
-                  onChange={(e) => setNominatingMinutes(Number(e.target.value))}
+                  onChange={(e) =>
+                    editField("nominatingMinutes", Number(e.target.value))
+                  }
                   disabled={saving}
                 />
                 <p className="text-xs text-muted">
@@ -130,7 +175,9 @@ export function SessionSettingsPanel({
                   min={0}
                   max={600}
                   value={votingMinutes}
-                  onChange={(e) => setVotingMinutes(Number(e.target.value))}
+                  onChange={(e) =>
+                    editField("votingMinutes", Number(e.target.value))
+                  }
                   disabled={saving}
                 />
                 <p className="text-xs text-muted">
@@ -147,7 +194,7 @@ export function SessionSettingsPanel({
                 id="edit-auto-advance"
                 type="checkbox"
                 checked={autoAdvance}
-                onChange={(e) => setAutoAdvance(e.target.checked)}
+                onChange={(e) => editField("autoAdvance", e.target.checked)}
                 disabled={saving}
                 className="size-5 shrink-0 cursor-pointer accent-primary md:size-4"
               />
@@ -171,7 +218,7 @@ export function SessionSettingsPanel({
                 type="submit"
                 size="lg"
                 className="w-full md:w-auto"
-                disabled={saving || !name.trim()}
+                disabled={saving || !name.trim() || !dirty}
               >
                 {saving ? "Saving..." : "Save changes"}
               </Button>
