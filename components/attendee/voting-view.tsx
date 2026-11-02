@@ -32,6 +32,8 @@ import {
   pruneSwipeHistory,
   recordSwipe,
   undoLastSwipe,
+  VoteChange,
+  voteChangeFor,
   type SwipeHistory,
 } from "@/lib/client/swipe-history";
 import { VoteGrid } from "./vote-grid";
@@ -206,24 +208,23 @@ export function VotingView({
   const handleSwipe = (card: SwipeCard, direction: SwipeDirection) => {
     // A new swipe or skip moves on from the last failed vote.
     setError(null);
-    // Only a right swipe on a card without a vote casts one; undo takes back
-    // exactly that.
-    const addedVote = direction === "right" && !voted.has(card.id);
+    // Right casts a vote and left takes one back, so a skip after "Swipe
+    // again" removes an earlier like. Undo reverses exactly this change.
+    const voteChange = voteChangeFor(direction, voted.has(card.id));
     updateSwiped((current) =>
       current.includes(card.id) ? current : [...current, card.id]
     );
     updateHistory((current) =>
-      recordSwipe(current, { id: card.id, direction, addedVote })
+      recordSwipe(current, { id: card.id, direction, voteChange })
     );
-    if (addedVote) {
-      void submitVote(card.id, true).then((ok) => {
-        // A failed vote puts the card back on the deck so it can be retried.
-        // Work on the current list so later swipes are kept.
-        if (ok) return;
-        updateSwiped((current) => current.filter((id) => id !== card.id));
-        updateHistory((current) => forgetSwipe(current, card.id));
-      });
-    }
+    if (voteChange === VoteChange.None) return;
+    void submitVote(card.id, voteChange === VoteChange.Added).then((ok) => {
+      // A failed change puts the card back on the deck so it can be retried.
+      // Work on the current list so later swipes are kept.
+      if (ok) return;
+      updateSwiped((current) => current.filter((id) => id !== card.id));
+      updateHistory((current) => forgetSwipe(current, card.id));
+    });
   };
 
   const swiped = new Set(swipedIds);
@@ -240,7 +241,7 @@ export function VotingView({
     updateHistory(() => step.history);
     updateSwiped((current) => current.filter((id) => id !== step.record.id));
     setReturningCard({ id: step.record.id, direction: step.record.direction });
-    if (step.removeVote) void submitVote(step.record.id, false);
+    if (step.restoreVote !== null) void submitVote(step.record.id, step.restoreVote);
   };
 
   // The card undo put back goes on top, even ahead of cards that came back

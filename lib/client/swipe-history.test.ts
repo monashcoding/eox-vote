@@ -6,12 +6,27 @@ import {
   pruneSwipeHistory,
   recordSwipe,
   undoLastSwipe,
+  VoteChange,
+  voteChangeFor,
   type SwipeRecord,
 } from "./swipe-history.ts";
 
-const voteA: SwipeRecord = { id: "a", direction: "right", addedVote: true };
-const skipB: SwipeRecord = { id: "b", direction: "left", addedVote: false };
-const keepC: SwipeRecord = { id: "c", direction: "right", addedVote: false };
+const voteA: SwipeRecord = { id: "a", direction: "right", voteChange: VoteChange.Added };
+const skipB: SwipeRecord = { id: "b", direction: "left", voteChange: VoteChange.None };
+const keepC: SwipeRecord = { id: "c", direction: "right", voteChange: VoteChange.None };
+const unvoteD: SwipeRecord = { id: "d", direction: "left", voteChange: VoteChange.Removed };
+
+describe("voteChangeFor", () => {
+  it("adds a vote on a right swipe only when there is none", () => {
+    assert.equal(voteChangeFor("right", false), VoteChange.Added);
+    assert.equal(voteChangeFor("right", true), VoteChange.None);
+  });
+
+  it("removes the vote on a left swipe of a voted card", () => {
+    assert.equal(voteChangeFor("left", true), VoteChange.Removed);
+    assert.equal(voteChangeFor("left", false), VoteChange.None);
+  });
+});
 
 describe("recordSwipe", () => {
   it("appends the newest swipe last", () => {
@@ -19,7 +34,7 @@ describe("recordSwipe", () => {
   });
 
   it("replaces an older swipe of the same card", () => {
-    const again: SwipeRecord = { id: "a", direction: "left", addedVote: false };
+    const again: SwipeRecord = { id: "a", direction: "left", voteChange: VoteChange.Removed };
     assert.deepEqual(recordSwipe([voteA, skipB], again), [skipB, again]);
   });
 });
@@ -29,13 +44,17 @@ describe("undoLastSwipe", () => {
     assert.equal(undoLastSwipe([]), null);
   });
 
-  it("removes the vote only when the right swipe cast it", () => {
-    assert.equal(undoLastSwipe([voteA])?.removeVote, true);
-    assert.equal(undoLastSwipe([keepC])?.removeVote, false);
+  it("takes back a vote the swipe cast", () => {
+    assert.equal(undoLastSwipe([voteA])?.restoreVote, false);
   });
 
-  it("never sends a request for a left swipe", () => {
-    assert.equal(undoLastSwipe([skipB])?.removeVote, false);
+  it("restores a vote the skip removed", () => {
+    assert.equal(undoLastSwipe([unvoteD])?.restoreVote, true);
+  });
+
+  it("sends nothing when the swipe changed nothing", () => {
+    assert.equal(undoLastSwipe([keepC])?.restoreVote, null);
+    assert.equal(undoLastSwipe([skipB])?.restoreVote, null);
   });
 
   it("walks back through the history one swipe at a time", () => {
@@ -50,7 +69,7 @@ describe("undoLastSwipe", () => {
 });
 
 describe("forgetSwipe and pruneSwipeHistory", () => {
-  it("forgets a card whose vote failed", () => {
+  it("forgets a card whose vote change failed", () => {
     assert.deepEqual(forgetSwipe([voteA, skipB], "a"), [skipB]);
   });
 
@@ -67,11 +86,25 @@ describe("forgetSwipe and pruneSwipeHistory", () => {
 
 describe("parseSwipeHistory", () => {
   it("round-trips a stored history", () => {
-    assert.deepEqual(parseSwipeHistory(JSON.stringify([voteA, skipB])), [voteA, skipB]);
+    assert.deepEqual(parseSwipeHistory(JSON.stringify([voteA, skipB, unvoteD])), [voteA, skipB, unvoteD]);
+  });
+
+  it("reads entries stored before skips could remove votes", () => {
+    const raw = JSON.stringify([
+      { id: "a", direction: "right", addedVote: true },
+      { id: "b", direction: "left", addedVote: false },
+    ]);
+    assert.deepEqual(parseSwipeHistory(raw), [voteA, skipB]);
   });
 
   it("drops malformed entries and bad JSON", () => {
-    const raw = JSON.stringify([voteA, { id: "x", direction: "up", addedVote: true }, { id: 3 }, null]);
+    const raw = JSON.stringify([
+      voteA,
+      { id: "x", direction: "up", voteChange: VoteChange.Added },
+      { id: "y", direction: "left", voteChange: "maybe" },
+      { id: 3 },
+      null,
+    ]);
     assert.deepEqual(parseSwipeHistory(raw), [voteA]);
     assert.deepEqual(parseSwipeHistory("{not json"), []);
     assert.deepEqual(parseSwipeHistory(JSON.stringify({ id: "a" })), []);
