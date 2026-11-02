@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Check, Pause, Play, Square, Timer } from "lucide-react";
+import { Check, FastForward, Pause, Play, Rewind, Square, Timer } from "lucide-react";
 import {
   AdminSessionDetailDto,
   ControlAction,
@@ -221,7 +221,7 @@ export function SessionStagePanel({
                     })
                   }
                 >
-                  <ArrowLeft />
+                  <Rewind />
                   {prevLabel}
                 </Button>
               )}
@@ -237,7 +237,7 @@ export function SessionStagePanel({
                   }
                 >
                   {nextLabel}
-                  <ArrowRight />
+                  <FastForward />
                 </Button>
               )}
             </>
