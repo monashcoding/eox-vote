@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/client/api";
 import { usePolling } from "@/lib/client/use-polling";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { NomineesPanel } from "./nominees-panel";
 import { SessionHeader } from "./session-header";
 import { SessionSettingsPanel } from "./session-settings-panel";
 import { SessionStagePanel } from "./session-stage-panel";
@@ -94,7 +95,7 @@ export function SessionDetailView({
       <div className="space-y-8">
         {/* Stage & Timer Panel */}
         <SessionStagePanel session={session} onRefresh={fetchSession} />
-        {/* Nominees Panel (Nominee-management agent adds here) */}
+        <NomineesPanel session={session} onRefresh={fetchSession} />
         {/* Results Panel (Results agent adds here) */}
         {/* QR Code Panel (QR agent adds here) */}
 

@@ -82,7 +82,7 @@ export interface AdminSessionDetailDto {
   startedAt: number | null;
   finishedAt: number | null;
   serverNow: number;
-  nominees?: AdminNomineeDto[];
+  nominees: AdminNomineeDto[];
   revealedCount?: number;
   totalRevealSteps?: number;
   podium?: PodiumPlaceDto[];

@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import {
+  AdminNomineeDto,
   AdminSessionDetailDto,
   AdminSessionSummaryDto,
   ControlRequest,
@@ -11,6 +12,7 @@ import { invalidatePublicState } from "./public-state";
 import { db, type DbTransaction } from "../db";
 import { appSettings, nominees, sessions, votes } from "../db/schema";
 import { HttpError } from "../http";
+import { listAdminNominees } from "../nominees";
 
 export function toTimerDto(
   timerEndsAt: Date | null,
@@ -43,7 +45,8 @@ export function toAdminSessionSummaryDto(
 
 export function toAdminSessionDetailDto(
   session: typeof sessions.$inferSelect,
-  currentSessionId: string | null
+  currentSessionId: string | null,
+  adminNominees: AdminNomineeDto[]
 ): AdminSessionDetailDto {
   return {
     id: session.id,
@@ -58,6 +61,7 @@ export function toAdminSessionDetailDto(
     startedAt: session.startedAt ? session.startedAt.getTime() : null,
     finishedAt: session.finishedAt ? session.finishedAt.getTime() : null,
     serverNow: Date.now(),
+    nominees: adminNominees,
   };
 }
 
@@ -236,7 +240,11 @@ export async function applyAdminSessionControl(
       .returning();
 
     invalidatePublicState();
-    return toAdminSessionDetailDto(updated, currentSessionId);
+    return toAdminSessionDetailDto(
+      updated,
+      currentSessionId,
+      await listAdminNominees(updated.id)
+    );
   });
 }
 
@@ -245,7 +253,11 @@ export async function getAdminSessionDetail(
 ): Promise<AdminSessionDetailDto> {
   const session = await syncSession(id);
   const currentSessionId = await getCurrentSessionId();
-  return toAdminSessionDetailDto(session, currentSessionId);
+  return toAdminSessionDetailDto(
+    session,
+    currentSessionId,
+    await listAdminNominees(session.id)
+  );
 }
 
 export interface CreateSessionInput {
@@ -275,7 +287,7 @@ export async function createAdminSession(
 
   invalidatePublicState();
   const currentSessionId = await getCurrentSessionId();
-  return toAdminSessionDetailDto(inserted, currentSessionId);
+  return toAdminSessionDetailDto(inserted, currentSessionId, []);
 }
 
 export interface UpdateSessionInput {
@@ -331,7 +343,11 @@ export async function updateAdminSession(
 
   invalidatePublicState();
   const currentSessionId = await getCurrentSessionId();
-  return toAdminSessionDetailDto(updated, currentSessionId);
+  return toAdminSessionDetailDto(
+    updated,
+    currentSessionId,
+    await listAdminNominees(updated.id)
+  );
 }
 
 export async function deleteAdminSession(id: string): Promise<void> {

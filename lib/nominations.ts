@@ -1,9 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
-import { Stage, type PublicNomineeDto } from "./api-types";
+import { Stage, type AdminNomineeDto, type PublicNomineeDto } from "./api-types";
 import { db, type DbTransaction } from "./db";
-import { nomineePhotos, nominees } from "./db/schema";
+import { nomineePhotos, nominees, votes } from "./db/schema";
 import { HttpError } from "./http";
-import { toPublicNomineeDto } from "./nominees";
+import { toAdminNomineeDto, toPublicNomineeDto } from "./nominees";
 import type { NomineeForm } from "./photos";
 import { getCurrentSessionId, syncSessionInTx } from "./session";
 import { invalidatePublicState } from "./session/public-state";
@@ -142,4 +142,42 @@ export async function applyNomineeUpdate(
       .where(eq(nomineePhotos.nomineeId, nomineeId));
   }
   return row;
+}
+
+/** Admin edit: any stage, no ownership check. Returns the DTO with its derived vote count. */
+export async function updateNomineeAsAdmin(
+  nomineeId: string,
+  form: NomineeForm
+): Promise<AdminNomineeDto> {
+  const updated = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ id: nominees.id })
+      .from(nominees)
+      .where(eq(nominees.id, nomineeId))
+      .for("update");
+    if (!existing) {
+      throw new HttpError(404, "Nomination not found");
+    }
+    return await applyNomineeUpdate(tx, nomineeId, form);
+  });
+
+  const [{ voteCount }] = await db
+    .select({ voteCount: sql<number>`count(*)::int` })
+    .from(votes)
+    .where(eq(votes.nomineeId, nomineeId));
+
+  invalidatePublicState();
+  return toAdminNomineeDto(updated, voteCount);
+}
+
+/** Admin delete: any stage, no ownership check. Votes and photo cascade. */
+export async function deleteNomineeAsAdmin(nomineeId: string): Promise<void> {
+  const deleted = await db
+    .delete(nominees)
+    .where(eq(nominees.id, nomineeId))
+    .returning({ id: nominees.id });
+  if (deleted.length === 0) {
+    throw new HttpError(404, "Nomination not found");
+  }
+  invalidatePublicState();
 }
