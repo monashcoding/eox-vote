@@ -85,15 +85,18 @@ function NomineeRow({
     }
   };
 
+  // Each nominee is its own bordered item: the photo holds the left column and
+  // everything else (name, votes, actions, edit form, delete confirm, errors)
+  // stays in the column beside it, so wrapped controls never read as the next row's.
   return (
-    <li className="space-y-2 py-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <img
-          src={nominee.photoUrl}
-          alt={`${nominee.firstName} ${nominee.lastName}`}
-          className="size-14 shrink-0 rounded-full object-cover"
-        />
+    <li className="flex items-start gap-3 rounded-panel border-2 border-border bg-surface-soft p-3">
+      <img
+        src={nominee.photoUrl}
+        alt={`${nominee.firstName} ${nominee.lastName}`}
+        className="size-14 shrink-0 rounded-full object-cover"
+      />
 
+      <div className="flex min-h-14 min-w-0 flex-1 flex-wrap content-center items-center gap-x-3 gap-y-2">
         {editing ? (
           <form
             onSubmit={handleSaveNames}
@@ -106,7 +109,7 @@ function NomineeRow({
               maxLength={50}
               required
               disabled={busy}
-              className="w-36"
+              className="sm:w-40"
             />
             <Input
               aria-label="Last name"
@@ -115,7 +118,7 @@ function NomineeRow({
               maxLength={50}
               required
               disabled={busy}
-              className="w-36"
+              className="sm:w-40"
             />
             <Button
               type="submit"
@@ -135,77 +138,76 @@ function NomineeRow({
             </Button>
           </form>
         ) : (
-          <p className="min-w-32 flex-1 text-base font-semibold wrap-break-word compact:text-sm">
-            {nominee.firstName} {nominee.lastName}
-          </p>
-        )}
+          <>
+            <div className="min-w-0 flex-1 basis-40">
+              <p className="text-base font-semibold wrap-break-word compact:text-sm">
+                {nominee.firstName} {nominee.lastName}
+              </p>
+              {showVotes && (
+                <p className="text-xs font-semibold text-muted">
+                  <span className="tabular-nums">{nominee.votes.toLocaleString()}</span>{" "}
+                  {nominee.votes === 1 ? "vote" : "votes"}
+                </p>
+              )}
+            </div>
 
-        {showVotes && (
-          <span className="text-xs font-semibold text-muted">
-            <span className="inline-block min-w-[3ch] text-right tabular-nums">
-              {nominee.votes.toLocaleString()}
-            </span>{" "}
-            {nominee.votes === 1 ? "vote" : "votes"}
-          </span>
-        )}
-
-        {!editing && (
-          <div className="ml-auto flex items-center gap-1">
-            {confirmingDelete ? (
-              <>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => void handleDelete()}
-                >
-                  {busy ? "Deleting..." : "Confirm delete"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => setConfirmingDelete(false)}
-                >
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={busy}
-                  aria-label={`Edit name of ${nominee.firstName} ${nominee.lastName}`}
-                  onClick={() => {
-                    setFirstName(nominee.firstName);
-                    setLastName(nominee.lastName);
-                    setEditing(true);
-                  }}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={busy}
-                  aria-label={`Replace photo of ${nominee.firstName} ${nominee.lastName}`}
-                  onClick={() => document.getElementById(fileInputId)?.click()}
-                >
-                  <ImagePlus />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={busy}
-                  aria-label={`Delete ${nominee.firstName} ${nominee.lastName}`}
-                  onClick={() => setConfirmingDelete(true)}
-                >
-                  <Trash2 />
-                </Button>
-              </>
-            )}
-          </div>
+            <div className="flex flex-wrap items-center gap-1">
+              {confirmingDelete ? (
+                <>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void handleDelete()}
+                  >
+                    {busy ? "Deleting..." : "Confirm delete"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => setConfirmingDelete(false)}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={busy}
+                    aria-label={`Edit name of ${nominee.firstName} ${nominee.lastName}`}
+                    onClick={() => {
+                      setFirstName(nominee.firstName);
+                      setLastName(nominee.lastName);
+                      setEditing(true);
+                    }}
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={busy}
+                    aria-label={`Replace photo of ${nominee.firstName} ${nominee.lastName}`}
+                    onClick={() => document.getElementById(fileInputId)?.click()}
+                  >
+                    <ImagePlus />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={busy}
+                    aria-label={`Delete ${nominee.firstName} ${nominee.lastName}`}
+                    onClick={() => setConfirmingDelete(true)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </>
+              )}
+            </div>
+          </>
         )}
 
         <input
@@ -219,9 +221,9 @@ function NomineeRow({
             e.target.value = "";
           }}
         />
-      </div>
 
-      <ErrorNote message={error} />
+        <ErrorNote message={error} className="basis-full" />
+      </div>
     </li>
   );
 }
@@ -255,7 +257,7 @@ export function NomineesPanel({
             No nominations yet. They appear here as attendees submit them.
           </p>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="space-y-3">
             {nominees.map((nominee) => (
               <NomineeRow
                 key={nominee.id}
