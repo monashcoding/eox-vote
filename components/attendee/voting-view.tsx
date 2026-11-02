@@ -163,20 +163,24 @@ export function VotingView({
     }
   };
 
-  const markSwiped = (ids: readonly string[]) => {
-    setSwipedIds(ids);
-    saveSwipedIds(session.id, ids);
-  };
+  const updateSwiped = (
+    update: (current: readonly string[]) => readonly string[]
+  ) =>
+    setSwipedIds((current) => {
+      const next = update(current);
+      saveSwipedIds(session.id, next);
+      return next;
+    });
 
   const handleSwipe = (card: SwipeCard, direction: SwipeDirection) => {
-    const next = swipedIds.includes(card.id)
-      ? swipedIds
-      : [...swipedIds, card.id];
-    markSwiped(next);
+    updateSwiped((current) =>
+      current.includes(card.id) ? current : [...current, card.id]
+    );
     if (direction === "right" && !voted.has(card.id)) {
       void submitVote(card.id, true).then((ok) => {
         // A failed vote puts the card back on the deck so it can be retried.
-        if (!ok) markSwiped(next.filter((id) => id !== card.id));
+        // Work on the current list so later swipes are kept.
+        if (!ok) updateSwiped((current) => current.filter((id) => id !== card.id));
       });
     }
   };
@@ -238,7 +242,7 @@ export function VotingView({
                 type="button"
                 variant="outline"
                 className="w-full md:w-auto"
-                onClick={() => markSwiped([])}
+                onClick={() => updateSwiped(() => [])}
               >
                 <RotateCcw />
                 Swipe again

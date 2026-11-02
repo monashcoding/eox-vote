@@ -89,7 +89,6 @@ type FlightState = {
   id: string;
   card: SwipeCard;
   direction: SwipeDirection;
-  phase: "flying" | "done";
 };
 
 export function SwipeDeck(props: {
@@ -123,35 +122,41 @@ export function SwipeDeck(props: {
       if (disabled) return;
       setDragOffset(0);
       setIsDragging(false);
-      setFlight({ id: card.id, card, direction, phase: "flying" });
+      setFlight({ id: card.id, card, direction });
     },
     [disabled],
   );
 
+  /*
+   * Hand the card over and end the flight in the same batch, so the parent
+   * removes it before it can render again. A card that comes back (failed
+   * vote rollback) then renders normally instead of staying hidden.
+   */
+  const finishFlight = useCallback(
+    (current: FlightState) => {
+      setFlight(null);
+      onSwipe(current.card, current.direction);
+    },
+    [onSwipe],
+  );
+
   /* Fallback timer if transitionend does not fire */
   useEffect(() => {
-    if (!activeFlight || activeFlight.phase !== "flying") return;
+    if (!activeFlight) return;
     const duration = reducedMotion
       ? REDUCED_FADE_MS + 50
       : FLY_DURATION_MS + 50;
-    const timer = setTimeout(() => {
-      const { card, direction } = activeFlight;
-      setFlight({ id: card.id, card, direction, phase: "done" });
-      onSwipe(card, direction);
-    }, duration);
+    const timer = setTimeout(() => finishFlight(activeFlight), duration);
     return () => clearTimeout(timer);
-  }, [activeFlight, reducedMotion, onSwipe]);
+  }, [activeFlight, reducedMotion, finishFlight]);
 
   const handleTransitionEnd = useCallback(
     (e: React.TransitionEvent<HTMLDivElement>) => {
       if (e.target !== e.currentTarget) return;
-      if (!activeFlight || activeFlight.phase !== "flying") return;
-
-      const { card, direction } = activeFlight;
-      setFlight({ id: card.id, card, direction, phase: "done" });
-      onSwipe(card, direction);
+      if (!activeFlight) return;
+      finishFlight(activeFlight);
     },
-    [activeFlight, onSwipe],
+    [activeFlight, finishFlight],
   );
 
   /* ---- Pointer gesture handlers ---- */
@@ -293,7 +298,7 @@ export function SwipeDeck(props: {
               Math.min(12, (dragOffset / 280) * 12)
             );
 
-            if (activeFlight?.phase === "flying") {
+            if (activeFlight) {
               if (reducedMotion) {
                 transform = "none";
                 transition = `opacity ${REDUCED_FADE_MS}ms ${EASE_REVEAL}`;
@@ -305,10 +310,6 @@ export function SwipeDeck(props: {
                 transform = `translate3d(${flyX}, 0, 0) rotate(${flyRot}deg)`;
                 transition = `transform ${FLY_DURATION_MS}ms ${EASE_REVEAL}`;
               }
-            } else if (activeFlight?.phase === "done") {
-              transform = "none";
-              transition = "none";
-              opacity = 0;
             } else if (isDragging) {
               // Reduced motion: the card stays put, the Vote/Skip tag still shows the direction.
               transform = reducedMotion
