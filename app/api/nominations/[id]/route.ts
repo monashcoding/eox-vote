@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDeviceTokenHash } from "@/lib/auth/device";
+import { requireDeviceTokenHash } from "@/lib/auth/device";
 import { handleRoute } from "@/lib/http";
 import {
   assertCanNominate,
@@ -16,7 +16,7 @@ interface RouteContext {
 export const PATCH = handleRoute<RouteContext>(
   async (request: Request, { params }) => {
     const id = requireNomineeId((await params).id);
-    const deviceHash = await getDeviceTokenHash();
+    const deviceHash = await requireDeviceTokenHash();
     await assertCanNominate(deviceHash, id);
     const form = await parseNomineeForm(request);
     const nominee = await updateOwnNomination(id, deviceHash, form);
@@ -27,7 +27,7 @@ export const PATCH = handleRoute<RouteContext>(
 export const DELETE = handleRoute<RouteContext>(
   async (_request: Request, { params }) => {
     const id = requireNomineeId((await params).id);
-    const deviceHash = await getDeviceTokenHash();
+    const deviceHash = await requireDeviceTokenHash();
     await deleteOwnNomination(id, deviceHash);
     return new NextResponse(null, { status: 204 });
   }

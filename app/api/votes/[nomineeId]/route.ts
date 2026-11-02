@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { VotesDto } from "@/lib/api-types";
-import { getDeviceTokenHash } from "@/lib/auth/device";
+import { requireDeviceTokenHash } from "@/lib/auth/device";
 import { handleRoute } from "@/lib/http";
 import { requireNomineeId } from "@/lib/nominees";
 import { castVote, removeVote } from "@/lib/votes";
@@ -17,7 +17,7 @@ function votesResponse(votes: string[]): NextResponse {
 export const PUT = handleRoute<RouteContext>(
   async (_request: Request, { params }) => {
     const nomineeId = requireNomineeId((await params).nomineeId);
-    const deviceHash = await getDeviceTokenHash();
+    const deviceHash = await requireDeviceTokenHash();
     return votesResponse(await castVote(nomineeId, deviceHash));
   }
 );
@@ -25,7 +25,7 @@ export const PUT = handleRoute<RouteContext>(
 export const DELETE = handleRoute<RouteContext>(
   async (_request: Request, { params }) => {
     const nomineeId = requireNomineeId((await params).nomineeId);
-    const deviceHash = await getDeviceTokenHash();
+    const deviceHash = await requireDeviceTokenHash();
     return votesResponse(await removeVote(nomineeId, deviceHash));
   }
 );

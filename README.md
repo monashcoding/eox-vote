@@ -79,7 +79,7 @@ Commits follow Conventional Commits; a husky hook enforces it.
 
 The app is a plain Node server plus Postgres. There is no serverless or edge dependency.
 
-1. Provide a Postgres database and set `DATABASE_URL` (for example `postgres://user:password@host:5432/dbname`) in the server environment.
+1. Provide a Postgres database and set `DATABASE_URL` (for example `postgres://user:password@host:5432/dbname`) in the server environment. Also set `DEVICE_SECRET` to a long random value (`openssl rand -base64 32`); attendee requests fail with a server error until it is set.
 2. Install and build: `pnpm install --frozen-lockfile` then `pnpm build`.
 3. **Run migrations before starting the new version:** `pnpm db:migrate`. This uses `drizzle-kit`, which is a dev dependency, so run it from an install that includes dev dependencies (for example the build stage).
 4. Set the admin passcode with the SQL above.
@@ -89,6 +89,7 @@ Notes:
 
 - **HTTPS is required in production.** The device and admin cookies are marked `secure` when `NODE_ENV` is `production`, so browsers will not send them over plain HTTP. Hosts will be unable to sign in and attendees will not be able to nominate or vote if the site is served over HTTP (except on `localhost`).
 - **Instances.** The public state endpoint keeps a 1 second in-process cache, and every change on the same instance clears it immediately. A single instance keeps that cache coherent. Multiple instances behind a load balancer work, because all data is in Postgres, but each instance caches separately, so a change made through one instance can take up to a second to show on the others.
+- **Never rotate `DEVICE_SECRET` during an event.** It signs the device cookies, so a new value gives every device a new identity: earlier votes no longer count as theirs (they can vote again) and attendees can no longer edit their own nominations.
 - Photos are request bodies of up to 5 MB, so make sure your proxy allows that.
 
 ## Data model
@@ -105,7 +106,7 @@ Deleting a session removes its nominees, photos and votes.
 
 ## Limitations
 
-- **Device identity is a cookie.** Each browser gets a random token (`eox_device`, httpOnly, one year). Only a hash is stored. Clearing cookies, using a private window, or switching browsers makes a new device, which can vote again and cannot edit earlier nominations.
+- **Device identity is a cookie.** Each browser gets a random token signed with `DEVICE_SECRET` (`eox_device`, httpOnly, one year), issued by `/api/me` when the attendee page loads. Voting and nominating require that cookie, so a script cannot vote as a new device on every request, but a script that first calls `/api/me` still can. Only a hash is stored. Clearing cookies, using a private window, or switching browsers makes a new device, which can vote again and cannot edit earlier nominations.
 - **A lost cookie means asking a host.** Hosts can edit or delete any nomination regardless of stage.
 - **Photos live in Postgres.** Uploads must be JPEG, PNG or WebP and at most 5 MB. The attendee app resizes them in the browser to at most 1600 px on the long edge and re-encodes as JPEG, which also strips EXIF data. Back up the database accordingly.
 - The admin passcode is a shared secret with no per-host accounts and no rate limiting beyond a short delay on wrong attempts.
