@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { ControlAction, type ControlRequest } from "@/lib/api-types";
+import { ControlAction, Stage, type ControlRequest } from "@/lib/api-types";
 import { requireAdmin } from "@/lib/auth/admin";
 import { handleRoute, HttpError } from "@/lib/http";
 import { applyAdminSessionControl } from "@/lib/session";
@@ -12,9 +12,11 @@ interface RouteContext {
 
 const controlSchema = z.union([
   z.object({
+    action: z.enum([ControlAction.Next, ControlAction.Previous]),
+    expectedStage: z.enum(Object.values(Stage)),
+  }),
+  z.object({
     action: z.enum([
-      ControlAction.Next,
-      ControlAction.Previous,
       ControlAction.Pause,
       ControlAction.Resume,
       ControlAction.ClearTimer,

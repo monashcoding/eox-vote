@@ -114,7 +114,10 @@ export function SessionStagePanel({
       `Are you sure you want to ${nextLabel.toLowerCase()}?`
     );
     if (!confirmed) return;
-    await sendControl({ action: ControlAction.Next });
+    await sendControl({
+      action: ControlAction.Next,
+      expectedStage: session.stage,
+    });
   };
 
   const handlePrevious = async () => {
@@ -123,7 +126,10 @@ export function SessionStagePanel({
       `Are you sure you want to go ${prevLabel.toLowerCase()}?`
     );
     if (!confirmed) return;
-    await sendControl({ action: ControlAction.Previous });
+    await sendControl({
+      action: ControlAction.Previous,
+      expectedStage: session.stage,
+    });
   };
 
   const handleToggleAutoAdvance = async (

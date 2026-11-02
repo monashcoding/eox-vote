@@ -7,7 +7,12 @@ import {
   Stage,
   TimerDto,
 } from "../api-types";
-import { applyAutoAdvance, applyControl, canAutoAdvance } from "./engine";
+import {
+  applyAutoAdvance,
+  applyControl,
+  canAutoAdvance,
+  isStaleStageMove,
+} from "./engine";
 import { buildPodium, clampRevealed } from "./ranking";
 import { invalidatePublicState } from "./public-state";
 import { db, type DbReader, type DbTransaction } from "../db";
@@ -198,31 +203,20 @@ export async function applyAdminSessionControl(
   id: string,
   request: ControlRequest
 ): Promise<AdminSessionDetailDto> {
-  return await db.transaction(async (tx) => {
+  const detail = await db.transaction(async (tx) => {
     const currentSessionId = await getCurrentSessionId(tx);
-    const [session] = await tx
-      .select()
-      .from(sessions)
-      .where(eq(sessions.id, id))
-      .for("update");
+    // Locks the row and persists any due auto-advance before the control applies.
+    const current = await syncSessionInTx(tx, id);
 
-    if (!session) {
-      throw new HttpError(404, "Session not found");
+    if (isStaleStageMove(request, current.stage as Stage)) {
+      return toAdminSessionDetailDto(
+        current,
+        currentSessionId,
+        await listAdminNominees(current.id, tx)
+      );
     }
 
     const now = Date.now();
-    let current = session;
-    let iterations = 0;
-
-    // Auto-advance if expired before applying control
-    while (canAutoAdvance(current, now) && iterations < 5) {
-      current = {
-        ...current,
-        ...applyAutoAdvance(current, now),
-      };
-      iterations++;
-    }
-
     const nextState = applyControl(
       current,
       request,
@@ -244,13 +238,15 @@ export async function applyAdminSessionControl(
       .where(eq(sessions.id, id))
       .returning();
 
-    invalidatePublicState();
     return toAdminSessionDetailDto(
       updated,
       currentSessionId,
       await listAdminNominees(updated.id, tx)
     );
   });
+  // After commit, so a rebuild cannot cache the pre-control row under the new generation.
+  invalidatePublicState();
+  return detail;
 }
 
 export async function getAdminSessionDetail(

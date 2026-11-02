@@ -88,7 +88,26 @@ export function applyAutoAdvance<T extends EngineSessionInput>(
   if (!canAutoAdvance(session, now)) {
     return normalizeSession(session);
   }
-  return applyControl(session, { action: ControlAction.Next }, now);
+  return applyControl(
+    session,
+    { action: ControlAction.Next, expectedStage: session.stage },
+    now
+  );
+}
+
+/**
+ * True for a `next`/`previous` whose `expectedStage` is no longer the session
+ * stage (an auto-advance or another host moved it first). Such a move must be
+ * dropped, or one click would apply on top of the move already made.
+ */
+export function isStaleStageMove(request: ControlRequest, stage: Stage): boolean {
+  if (
+    request.action !== ControlAction.Next &&
+    request.action !== ControlAction.Previous
+  ) {
+    return false;
+  }
+  return request.expectedStage !== stage;
 }
 
 /**

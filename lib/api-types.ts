@@ -113,9 +113,11 @@ export const ControlAction = {
 
 export type ControlAction = (typeof ControlAction)[keyof typeof ControlAction];
 
-export type SimpleControlAction =
+export type StageMoveAction =
   | typeof ControlAction.Next
-  | typeof ControlAction.Previous
+  | typeof ControlAction.Previous;
+
+export type SimpleControlAction =
   | typeof ControlAction.Pause
   | typeof ControlAction.Resume
   | typeof ControlAction.ClearTimer
@@ -123,6 +125,8 @@ export type SimpleControlAction =
   | typeof ControlAction.HideLast;
 
 export type ControlRequest =
+  /** `expectedStage` is the stage the host saw; a move from any other stage is ignored. */
+  | { action: StageMoveAction; expectedStage: Stage }
   | { action: SimpleControlAction }
   | { action: typeof ControlAction.AdjustTimer; deltaMs: number }
   | { action: typeof ControlAction.SetTimer; durationMs: number }

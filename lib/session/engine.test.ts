@@ -6,6 +6,7 @@ import {
   canAutoAdvance,
   applyAutoAdvance,
   EngineError,
+  isStaleStageMove,
   MAX_TIMER_MS,
   type EngineSessionInput,
 } from "./engine.ts";
@@ -31,7 +32,7 @@ describe("Session Engine: Next transition", () => {
   it("advances pending -> nominating, sets startedAt and timer when nominatingMinutes > 0", () => {
     const now = 1_000_000;
     const session = createMockSession({ nominatingMinutes: 20 });
-    const next = applyControl(session, { action: ControlAction.Next }, now);
+    const next = applyControl(session, { action: ControlAction.Next, expectedStage: session.stage }, now);
 
     assert.equal(next.stage, Stage.Nominating);
     assert.equal(next.startedAt, now);
@@ -43,7 +44,7 @@ describe("Session Engine: Next transition", () => {
     const now = 2_000_000;
     const initialStartedAt = 1_000_000;
     const session = createMockSession({ startedAt: initialStartedAt });
-    const next = applyControl(session, { action: ControlAction.Next }, now);
+    const next = applyControl(session, { action: ControlAction.Next, expectedStage: session.stage }, now);
 
     assert.equal(next.stage, Stage.Nominating);
     assert.equal(next.startedAt, initialStartedAt);
@@ -52,7 +53,7 @@ describe("Session Engine: Next transition", () => {
   it("advances pending -> nominating without timer if nominatingMinutes == 0", () => {
     const now = 1_000_000;
     const session = createMockSession({ nominatingMinutes: 0 });
-    const next = applyControl(session, { action: ControlAction.Next }, now);
+    const next = applyControl(session, { action: ControlAction.Next, expectedStage: session.stage }, now);
 
     assert.equal(next.stage, Stage.Nominating);
     assert.equal(next.timerEndsAt, null);
@@ -66,7 +67,7 @@ describe("Session Engine: Next transition", () => {
       votingMinutes: 15,
       timerEndsAt: now + 5000,
     });
-    const next = applyControl(session, { action: ControlAction.Next }, now);
+    const next = applyControl(session, { action: ControlAction.Next, expectedStage: session.stage }, now);
 
     assert.equal(next.stage, Stage.Voting);
     assert.equal(next.timerEndsAt, now + 15 * 60 * 1000);
@@ -79,7 +80,7 @@ describe("Session Engine: Next transition", () => {
       stage: Stage.Nominating,
       votingMinutes: 0,
     });
-    const next = applyControl(session, { action: ControlAction.Next }, now);
+    const next = applyControl(session, { action: ControlAction.Next, expectedStage: session.stage }, now);
 
     assert.equal(next.stage, Stage.Voting);
     assert.equal(next.timerEndsAt, null);
@@ -93,7 +94,7 @@ describe("Session Engine: Next transition", () => {
       timerEndsAt: now + 10000,
       revealedCount: 5,
     });
-    const next = applyControl(session, { action: ControlAction.Next }, now);
+    const next = applyControl(session, { action: ControlAction.Next, expectedStage: session.stage }, now);
 
     assert.equal(next.stage, Stage.Results);
     assert.equal(next.timerEndsAt, null);
@@ -107,7 +108,7 @@ describe("Session Engine: Next transition", () => {
       stage: Stage.Results,
       revealedCount: 3,
     });
-    const next = applyControl(session, { action: ControlAction.Next }, now);
+    const next = applyControl(session, { action: ControlAction.Next, expectedStage: session.stage }, now);
 
     assert.equal(next.stage, Stage.Finished);
     assert.equal(next.finishedAt, now);
@@ -118,7 +119,7 @@ describe("Session Engine: Next transition", () => {
   it("throws EngineError when trying to advance past finished", () => {
     const session = createMockSession({ stage: Stage.Finished });
     assert.throws(
-      () => applyControl(session, { action: ControlAction.Next }),
+      () => applyControl(session, { action: ControlAction.Next, expectedStage: session.stage }),
       EngineError
     );
   });
@@ -131,7 +132,7 @@ describe("Session Engine: Previous transition", () => {
       stage: Stage.Finished,
       finishedAt: now,
     });
-    const prev = applyControl(session, { action: ControlAction.Previous });
+    const prev = applyControl(session, { action: ControlAction.Previous, expectedStage: session.stage });
 
     assert.equal(prev.stage, Stage.Results);
     assert.equal(prev.finishedAt, null);
@@ -144,7 +145,7 @@ describe("Session Engine: Previous transition", () => {
       stage: Stage.Results,
       revealedCount: 2,
     });
-    const prev = applyControl(session, { action: ControlAction.Previous });
+    const prev = applyControl(session, { action: ControlAction.Previous, expectedStage: session.stage });
 
     assert.equal(prev.stage, Stage.Voting);
     assert.equal(prev.timerEndsAt, null);
@@ -156,7 +157,7 @@ describe("Session Engine: Previous transition", () => {
       stage: Stage.Voting,
       timerEndsAt: 12345,
     });
-    const prev = applyControl(session, { action: ControlAction.Previous });
+    const prev = applyControl(session, { action: ControlAction.Previous, expectedStage: session.stage });
 
     assert.equal(prev.stage, Stage.Nominating);
     assert.equal(prev.timerEndsAt, null);
@@ -170,7 +171,7 @@ describe("Session Engine: Previous transition", () => {
       startedAt,
       timerEndsAt: 2_000_000,
     });
-    const prev = applyControl(session, { action: ControlAction.Previous });
+    const prev = applyControl(session, { action: ControlAction.Previous, expectedStage: session.stage });
 
     assert.equal(prev.stage, Stage.Pending);
     assert.equal(prev.startedAt, startedAt);
@@ -181,7 +182,7 @@ describe("Session Engine: Previous transition", () => {
   it("throws EngineError when trying to go back from pending", () => {
     const session = createMockSession({ stage: Stage.Pending });
     assert.throws(
-      () => applyControl(session, { action: ControlAction.Previous }),
+      () => applyControl(session, { action: ControlAction.Previous, expectedStage: session.stage }),
       EngineError
     );
   });
@@ -740,5 +741,59 @@ describe("Session Engine: revealNext and hideLast", () => {
         EngineError
       );
     }
+  });
+});
+
+describe("Session Engine: stale stage moves", () => {
+  it("flags next/previous whose expected stage was already left", () => {
+    assert.equal(
+      isStaleStageMove(
+        { action: ControlAction.Next, expectedStage: Stage.Voting },
+        Stage.Results
+      ),
+      true
+    );
+    assert.equal(
+      isStaleStageMove(
+        { action: ControlAction.Previous, expectedStage: Stage.Nominating },
+        Stage.Voting
+      ),
+      true
+    );
+  });
+
+  it("accepts a move from the expected stage", () => {
+    assert.equal(
+      isStaleStageMove(
+        { action: ControlAction.Next, expectedStage: Stage.Voting },
+        Stage.Voting
+      ),
+      false
+    );
+  });
+
+  it("never flags non-stage actions", () => {
+    assert.equal(
+      isStaleStageMove({ action: ControlAction.RevealNext }, Stage.Voting),
+      false
+    );
+  });
+
+  it("drops a show-results click after the voting timer auto-advanced", () => {
+    const now = 5_000_000;
+    const session = createMockSession({
+      stage: Stage.Voting,
+      autoAdvance: true,
+      timerEndsAt: now - 1,
+    });
+    const synced = applyAutoAdvance(session, now);
+    assert.equal(synced.stage, Stage.Results);
+    assert.equal(
+      isStaleStageMove(
+        { action: ControlAction.Next, expectedStage: Stage.Voting },
+        synced.stage
+      ),
+      true
+    );
   });
 });
