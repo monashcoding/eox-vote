@@ -49,6 +49,12 @@ export interface PublicStateDto {
 export interface MeDto {
   sessionId: string | null;
   nominations: PublicNomineeDto[];
+  /** Nominee ids this device has voted for in the current session. */
+  votes: string[];
+}
+
+export interface VotesDto {
+  votes: string[];
 }
 
 export interface AdminSessionSummaryDto {

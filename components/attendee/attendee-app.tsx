@@ -10,6 +10,7 @@ import { StagePill } from "@/components/ui/badge";
 import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 import { NominatingView } from "./nominating-view";
+import { VotingView } from "./voting-view";
 
 export function StageBody({
   session,
@@ -24,13 +25,7 @@ export function StageBody({
         <NominatingView key={session.id} session={session} onChanged={onChanged} />
       );
     case Stage.Voting:
-      return (
-        <EmptyState
-          mascot={Mascot.ArmsUp}
-          title="Voting is open"
-          description="The swipe deck will appear here soon."
-        />
-      );
+      return <VotingView key={session.id} session={session} onChanged={onChanged} />;
     case Stage.Results:
       return (
         <EmptyState
