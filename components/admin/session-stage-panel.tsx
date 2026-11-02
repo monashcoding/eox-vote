@@ -7,6 +7,7 @@ import {
   ControlAction,
   ControlRequest,
   Stage,
+  StageMoveAction,
 } from "@/lib/api-types";
 import { api, ApiError } from "@/lib/client/api";
 import { useCountdown } from "@/lib/client/use-countdown";
@@ -75,6 +76,10 @@ export function SessionStagePanel({
       : session.votingMinutes || 45
   );
   const [customEndTime, setCustomEndTime] = React.useState<string>("");
+  const [pendingMove, setPendingMove] = React.useState<{
+    action: StageMoveAction;
+    stage: Stage;
+  } | null>(null);
 
   const nextLabel = getNextActionLabel(session.stage);
   const prevLabel = getPreviousActionLabel(session.stage);
@@ -108,27 +113,18 @@ export function SessionStagePanel({
     }
   };
 
-  const handleNext = async () => {
-    if (!nextLabel || loading) return;
-    const confirmed = window.confirm(
-      `Are you sure you want to ${nextLabel.toLowerCase()}?`
-    );
-    if (!confirmed) return;
-    await sendControl({
-      action: ControlAction.Next,
-      expectedStage: session.stage,
-    });
-  };
+  // Armed for the stage it was clicked in; a stage change while armed drops it.
+  const confirmingMove =
+    pendingMove && pendingMove.stage === session.stage ? pendingMove : null;
+  const confirmingLabel =
+    confirmingMove?.action === ControlAction.Next ? nextLabel : prevLabel;
 
-  const handlePrevious = async () => {
-    if (!prevLabel || loading) return;
-    const confirmed = window.confirm(
-      `Are you sure you want to go ${prevLabel.toLowerCase()}?`
-    );
-    if (!confirmed) return;
+  const handleConfirmMove = async () => {
+    if (!confirmingMove || loading) return;
+    setPendingMove(null);
     await sendControl({
-      action: ControlAction.Previous,
-      expectedStage: session.stage,
+      action: confirmingMove.action,
+      expectedStage: confirmingMove.stage,
     });
   };
 
@@ -196,17 +192,65 @@ export function SessionStagePanel({
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {prevLabel && (
-            <Button variant="outline" disabled={loading} onClick={handlePrevious}>
-              <ArrowLeft />
-              {prevLabel}
-            </Button>
-          )}
-          {nextLabel && (
-            <Button size="lg" disabled={loading} onClick={handleNext}>
-              {nextLabel}
-              <ArrowRight />
-            </Button>
+          {confirmingMove && confirmingLabel ? (
+            <div
+              role="group"
+              aria-label={`Confirm ${confirmingLabel.toLowerCase()}`}
+              className="flex flex-wrap items-center gap-1.5 rounded-control border-2 border-border-strong bg-surface-soft p-1"
+            >
+              <span className="px-2 text-sm font-semibold">
+                {confirmingLabel}?
+              </span>
+              <Button
+                size="sm"
+                disabled={loading}
+                autoFocus
+                onClick={() => void handleConfirmMove()}
+              >
+                Confirm
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={loading}
+                onClick={() => setPendingMove(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <>
+              {prevLabel && (
+                <Button
+                  variant="outline"
+                  disabled={loading}
+                  onClick={() =>
+                    setPendingMove({
+                      action: ControlAction.Previous,
+                      stage: session.stage,
+                    })
+                  }
+                >
+                  <ArrowLeft />
+                  {prevLabel}
+                </Button>
+              )}
+              {nextLabel && (
+                <Button
+                  size="lg"
+                  disabled={loading}
+                  onClick={() =>
+                    setPendingMove({
+                      action: ControlAction.Next,
+                      stage: session.stage,
+                    })
+                  }
+                >
+                  {nextLabel}
+                  <ArrowRight />
+                </Button>
+              )}
+            </>
           )}
         </div>
       </CardHeader>
