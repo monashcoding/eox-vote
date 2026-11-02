@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Undo2 } from "lucide-react";
 import type {
   MeDto,
   PublicNomineeDto,
@@ -11,7 +11,9 @@ import type {
 import { api, ApiError } from "@/lib/client/api";
 import {
   getDeckSeed,
+  loadSwipeHistory,
   loadSwipedIds,
+  saveSwipeHistory,
   saveSwipedIds,
   shuffleBySeed,
 } from "@/lib/client/deck-storage";
@@ -25,6 +27,13 @@ import { Spinner } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SwipeDeck, type SwipeCard } from "./swipe-deck";
 import type { SwipeDirection } from "@/lib/client/swipe-decision";
+import {
+  forgetSwipe,
+  pruneSwipeHistory,
+  recordSwipe,
+  undoLastSwipe,
+  type SwipeHistory,
+} from "@/lib/client/swipe-history";
 import { VoteGrid } from "./vote-grid";
 
 const Tab = {
@@ -59,10 +68,19 @@ export function VotingView({
   const [swipedIds, setSwipedIds] = React.useState<readonly string[]>(() =>
     loadSwipedIds(session.id)
   );
+  const [history, setHistory] = React.useState<SwipeHistory>(() =>
+    loadSwipeHistory(session.id)
+  );
+  const [returningCard, setReturningCard] = React.useState<{
+    id: string;
+    direction: SwipeDirection;
+  } | null>(null);
   const [seed] = React.useState(getDeckSeed);
   const [error, setError] = React.useState<string | null>(null);
   const inFlight = React.useRef(0);
   const loaded = React.useRef(false);
+  // The latest request per nominee; the next one waits for it.
+  const requestChains = React.useRef(new Map<string, Promise<boolean>>());
 
   const loadMe = React.useCallback(async () => {
     try {
@@ -128,36 +146,45 @@ export function VotingView({
       return next;
     });
 
-  /** Optimistic vote or unvote. Resolves true on success, rolls back on failure. */
-  const submitVote = async (
-    nomineeId: string,
-    vote: boolean
-  ): Promise<boolean> => {
+  /**
+   * Optimistic vote or unvote. Resolves true on success, rolls back on failure.
+   * Requests for one nominee run one at a time, so the DELETE from undoing a
+   * swipe always lands after that swipe's PUT.
+   */
+  const submitVote = (nomineeId: string, vote: boolean): Promise<boolean> => {
     setError(null);
     setVoted(nomineeId, vote);
     setPending(nomineeId, true);
     inFlight.current += 1;
-    try {
-      await api<VotesDto>(`/api/votes/${nomineeId}`, {
-        method: vote ? "PUT" : "DELETE",
-      });
-      return true;
-    } catch (err: unknown) {
-      setVoted(nomineeId, !vote);
-      if (err instanceof ApiError && err.status === 409) {
-        setError("Voting has closed, so your last change was not saved.");
-        void onChanged();
-      } else if (err instanceof ApiError && err.status === 404) {
-        setError("That entry is no longer available.");
-        void onChanged();
-      } else {
-        setError(`Could not save your vote. ${errorMessage(err, "Try again.")}`);
+    const previous = requestChains.current.get(nomineeId) ?? Promise.resolve(true);
+    const request: Promise<boolean> = previous.then(async () => {
+      try {
+        await api<VotesDto>(`/api/votes/${nomineeId}`, {
+          method: vote ? "PUT" : "DELETE",
+        });
+        return true;
+      } catch (err: unknown) {
+        setVoted(nomineeId, !vote);
+        if (err instanceof ApiError && err.status === 409) {
+          setError("Voting has closed, so your last change was not saved.");
+          void onChanged();
+        } else if (err instanceof ApiError && err.status === 404) {
+          setError("That entry is no longer available.");
+          void onChanged();
+        } else {
+          setError(`Could not save your vote. ${errorMessage(err, "Try again.")}`);
+        }
+        return false;
+      } finally {
+        inFlight.current -= 1;
+        if (requestChains.current.get(nomineeId) === request) {
+          requestChains.current.delete(nomineeId);
+          setPending(nomineeId, false);
+        }
       }
-      return false;
-    } finally {
-      inFlight.current -= 1;
-      setPending(nomineeId, false);
-    }
+    });
+    requestChains.current.set(nomineeId, request);
+    return request;
   };
 
   const updateSwiped = (
@@ -169,29 +196,67 @@ export function VotingView({
       return next;
     });
 
+  const updateHistory = (update: (current: SwipeHistory) => SwipeHistory) =>
+    setHistory((current) => {
+      const next = update(current);
+      saveSwipeHistory(session.id, next);
+      return next;
+    });
+
   const handleSwipe = (card: SwipeCard, direction: SwipeDirection) => {
     // A new swipe or skip moves on from the last failed vote.
     setError(null);
+    // Only a right swipe on a card without a vote casts one; undo takes back
+    // exactly that.
+    const addedVote = direction === "right" && !voted.has(card.id);
     updateSwiped((current) =>
       current.includes(card.id) ? current : [...current, card.id]
     );
-    if (direction === "right" && !voted.has(card.id)) {
+    updateHistory((current) =>
+      recordSwipe(current, { id: card.id, direction, addedVote })
+    );
+    if (addedVote) {
       void submitVote(card.id, true).then((ok) => {
         // A failed vote puts the card back on the deck so it can be retried.
         // Work on the current list so later swipes are kept.
-        if (!ok) updateSwiped((current) => current.filter((id) => id !== card.id));
+        if (ok) return;
+        updateSwiped((current) => current.filter((id) => id !== card.id));
+        updateHistory((current) => forgetSwipe(current, card.id));
       });
     }
   };
 
   const swiped = new Set(swipedIds);
+  // Swipes that can still be undone: cards still swiped away that still exist.
+  const undoable = pruneSwipeHistory(
+    history,
+    new Set(ordered.filter((nominee) => swiped.has(nominee.id)).map((n) => n.id))
+  );
+
+  const handleUndo = () => {
+    const step = undoLastSwipe(undoable);
+    if (!step) return;
+    setError(null);
+    updateHistory(() => step.history);
+    updateSwiped((current) => current.filter((id) => id !== step.record.id));
+    setReturningCard({ id: step.record.id, direction: step.record.direction });
+    if (step.removeVote) void submitVote(step.record.id, false);
+  };
+
+  // The card undo put back goes on top, even ahead of cards that came back
+  // after a failed vote (sort is stable, so the rest keep the deck order).
   const cards: SwipeCard[] = ordered
     .filter((nominee) => !swiped.has(nominee.id))
+    .sort(
+      (a, b) =>
+        Number(b.id === returningCard?.id) - Number(a.id === returningCard?.id)
+    )
     .map((nominee) => ({
       id: nominee.id,
       title: fullName(nominee),
       imageUrl: nominee.photoUrl,
     }));
+
   const votedCount = ordered.filter((nominee) => voted.has(nominee.id)).length;
   const deckShown = tab === Tab.Swipe && cards.length > 0;
 
@@ -241,6 +306,9 @@ export function VotingView({
             <SwipeDeck
               cards={cards}
               onSwipe={handleSwipe}
+              onUndo={handleUndo}
+              canUndo={undoable.length > 0}
+              returningCard={returningCard}
               className="min-h-56 flex-1 short:min-h-40"
             />
           </div>
@@ -250,15 +318,31 @@ export function VotingView({
               <h2 className="text-lg font-semibold leading-snug sm:text-xl">
                 You voted for {votedCount}
               </h2>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full md:w-auto"
-                onClick={() => updateSwiped(() => [])}
-              >
-                <RotateCcw />
-                Swipe again
-              </Button>
+              <div className="flex w-full gap-3 md:w-auto">
+                {undoable.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 md:flex-none"
+                    onClick={handleUndo}
+                  >
+                    <Undo2 />
+                    Undo
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 md:flex-none"
+                  onClick={() => {
+                    updateSwiped(() => []);
+                    updateHistory(() => []);
+                  }}
+                >
+                  <RotateCcw />
+                  Swipe again
+                </Button>
+              </div>
             </div>
             <p className="text-sm text-muted">
               Add or remove votes below until voting closes.

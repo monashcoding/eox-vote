@@ -1,5 +1,12 @@
+import {
+  parseSwipeHistory,
+  type SwipeHistory,
+  type SwipeRecord,
+} from "./swipe-history.ts";
+
 const SEED_KEY = "eox:deck-seed";
 const swipedKey = (sessionId: string) => `eox:swiped:${sessionId}`;
+const historyKey = (sessionId: string) => `eox:swipe-history:${sessionId}`;
 
 function readStorage(key: string): string | null {
   try {
@@ -83,4 +90,16 @@ export function loadSwipedIds(sessionId: string): string[] {
 
 export function saveSwipedIds(sessionId: string, ids: readonly string[]): void {
   writeStorage(swipedKey(sessionId), JSON.stringify(ids));
+}
+
+/** The session's swipes, oldest first, for undo. */
+export function loadSwipeHistory(sessionId: string): SwipeRecord[] {
+  return parseSwipeHistory(readStorage(historyKey(sessionId)));
+}
+
+export function saveSwipeHistory(
+  sessionId: string,
+  history: SwipeHistory
+): void {
+  writeStorage(historyKey(sessionId), JSON.stringify(history));
 }

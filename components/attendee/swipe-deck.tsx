@@ -8,7 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Check, X } from "lucide-react";
+import { Check, Undo2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { createPortal } from "react-dom";
@@ -109,10 +109,23 @@ type FlightState = {
 export function SwipeDeck(props: {
   cards: SwipeCard[];
   onSwipe: (card: SwipeCard, direction: SwipeDirection) => void;
+  /** Takes back the last swipe; the Undo button shows when this is set. */
+  onUndo?: () => void;
+  canUndo?: boolean;
+  /** A card that undo put back: it flies in from the side it left by. */
+  returningCard?: { id: string; direction: SwipeDirection } | null;
   disabled?: boolean;
   className?: string;
 }): React.JSX.Element | null {
-  const { cards, onSwipe, disabled = false, className } = props;
+  const {
+    cards,
+    onSwipe,
+    onUndo,
+    canUndo = false,
+    returningCard = null,
+    disabled = false,
+    className,
+  } = props;
 
   const reducedMotion = useSyncExternalStore(
     subscribeReducedMotion,
@@ -138,10 +151,11 @@ export function SwipeDeck(props: {
   const dragOriginRef = useRef({ x: 0, time: 0 });
 
   /*
-   * Deal: when a swipe brings a new card into the pile, it rotates out from
-   * behind the card that was at the bottom (now one layer up) to its own pose.
-   * Skipped on first render, under reduced motion, and when a card comes back
-   * on top after a failed vote.
+   * Undo: the card put back flies in from the side it left by (a fade under
+   * reduced motion). Deal: when a swipe brings a new card into the pile, it
+   * rotates out from behind the card that was at the bottom (now one layer
+   * up) to its own pose. Neither runs on first render; the deal also skips
+   * reduced motion and a card coming back on top after a failed vote.
    */
   const pileKey = cards
     .slice(0, PILE_SIZE)
@@ -151,20 +165,46 @@ export function SwipeDeck(props: {
     const ids = pileKey ? pileKey.split("|") : [];
     const previous = shownIdsRef.current;
     shownIdsRef.current = new Set(ids);
-    if (!previous || reducedMotion || ids.length < PILE_SIZE) return;
+    if (!previous) return;
+    if (
+      returningCard &&
+      ids[0] === returningCard.id &&
+      !previous.has(returningCard.id)
+    ) {
+      const side = returningCard.direction === "right" ? 1 : -1;
+      pileRef.current
+        ?.querySelector<HTMLElement>(
+          `[data-card-id="${CSS.escape(returningCard.id)}"]`
+        )
+        ?.animate(
+          reducedMotion
+            ? [{ opacity: 0 }, { opacity: 1 }]
+            : [
+                {
+                  transform: `translate3d(${side * 120}vw, 0, 0) rotate(${side * 15}deg)`,
+                },
+                { transform: pileTransform(0, 0, false) },
+              ],
+          {
+            duration: reducedMotion ? REDUCED_FADE_MS : FLY_DURATION_MS,
+            easing: DEAL_EASING,
+          }
+        );
+      return;
+    }
+    if (reducedMotion || ids.length < PILE_SIZE) return;
     const dealtId = ids[PILE_SIZE - 1];
     if (previous.has(dealtId) || !previous.has(ids[0])) return;
-    const dealt = pileRef.current?.querySelector<HTMLElement>(
-      `[data-card-id="${CSS.escape(dealtId)}"]`
-    );
-    dealt?.animate(
-      [
-        { transform: pileTransform(PILE_SIZE - 2, 0, false) },
-        { transform: pileTransform(PILE_SIZE - 1, 0, false) },
-      ],
-      { duration: DEAL_DURATION_MS, easing: DEAL_EASING }
-    );
-  }, [pileKey, reducedMotion]);
+    pileRef.current
+      ?.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(dealtId)}"]`)
+      ?.animate(
+        [
+          { transform: pileTransform(PILE_SIZE - 2, 0, false) },
+          { transform: pileTransform(PILE_SIZE - 1, 0, false) },
+        ],
+        { duration: DEAL_DURATION_MS, easing: DEAL_EASING }
+      );
+  }, [pileKey, reducedMotion, returningCard]);
 
   const topCard = cards[0];
   const activeFlight =
@@ -341,18 +381,23 @@ export function SwipeDeck(props: {
       className={cn(
         // A size container: the card is sized from the space the parent
         // gives the deck, so the card and Skip/Vote always fit together.
-        "animate-rise-in flex flex-col items-center gap-6 rounded-panel outline-none [container-type:size] [--deck-controls:5rem] [--deck-max:20rem] focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:[--deck-max:24rem] compact:[--deck-controls:4.25rem] short:flex-row short:justify-center",
+        "animate-rise-in flex flex-col items-center gap-6 rounded-panel outline-none [container-type:size] [--deck-controls-w:10rem] [--deck-max:20rem] focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:[--deck-max:24rem] compact:[--deck-controls-w:8.5rem] short:flex-row short:justify-center",
+        // Height the controls take under the card, gap included: Undo row
+        // plus the Skip/Vote row, or just Skip/Vote.
+        onUndo
+          ? "[--deck-controls-h:8.25rem] compact:[--deck-controls-h:7rem]"
+          : "[--deck-controls-h:5rem] compact:[--deck-controls-h:4.25rem]",
         className
       )}
     >
-      {/* Card stack: 3:4 and as wide as the deck allows once the Skip/Vote
-          row (--deck-controls: button plus gap) is taken out of its height,
-          less 2rem across for the rotated cards' corners. Short (landscape)
-          viewports put the buttons beside the card, so the width gives up
-          that space instead. */}
+      {/* Card stack: 3:4 and as wide as the deck allows once the controls
+          (--deck-controls-h) are taken out of its height, less 2rem across
+          for the rotated cards' corners. Short (landscape) viewports put the
+          controls beside the card, so the width gives up
+          --deck-controls-w instead. */}
       <div
         ref={pileRef}
-        className="relative aspect-3/4 w-[min(var(--deck-max),calc(100cqw_-_2rem),calc((100cqh_-_var(--deck-controls))*0.75))] shrink-0 select-none short:w-[min(calc(100cqh*0.75),calc(100cqw_-_var(--deck-controls)_-_2rem))]"
+        className="relative aspect-3/4 w-[min(var(--deck-max),calc(100cqw_-_2rem),calc((100cqh_-_var(--deck-controls-h))*0.75))] shrink-0 select-none short:w-[min(calc(100cqh*0.75),calc(100cqw_-_var(--deck-controls-w)_-_2rem))]"
         style={{ touchAction: "pan-y" }}
       >
         {visibleCards.map((card, index) => {
@@ -455,31 +500,45 @@ export function SwipeDeck(props: {
         })}
       </div>
 
-      {/* Control buttons: same actions as the gestures. Beside the card in
-          short viewports they sit at its bottom edge, in thumb reach and
-          clear of the vote error that floats over the top of the deck. */}
-      <div className="flex shrink-0 items-center gap-6 short:flex-col short:self-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Skip"
-          disabled={isActionDisabled}
-          onClick={() => topCard && startFlyOut(topCard, "left")}
-          className="size-14 compact:size-11"
-        >
-          <X className="size-6" />
-        </Button>
-        <Button
-          type="button"
-          size="icon"
-          aria-label="Vote"
-          disabled={isActionDisabled}
-          onClick={() => topCard && startFlyOut(topCard, "right")}
-          className="size-14 compact:size-11"
-        >
-          <Check className="size-6" />
-        </Button>
+      {/* Controls: Undo above Skip/Vote, the same actions as the gestures.
+          Beside the card in short viewports they sit at its bottom edge, in
+          thumb reach and clear of the vote error over the top of the deck. */}
+      <div className="flex shrink-0 flex-col gap-2 short:self-end">
+        {onUndo && (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={!canUndo || isActionDisabled}
+            onClick={onUndo}
+            className="text-muted"
+          >
+            <Undo2 />
+            Undo
+          </Button>
+        )}
+        <div className="flex items-center gap-6">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Skip"
+            disabled={isActionDisabled}
+            onClick={() => topCard && startFlyOut(topCard, "left")}
+            className="size-14 compact:size-11"
+          >
+            <X className="size-6" />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            aria-label="Vote"
+            disabled={isActionDisabled}
+            onClick={() => topCard && startFlyOut(topCard, "right")}
+            className="size-14 compact:size-11"
+          >
+            <Check className="size-6" />
+          </Button>
+        </div>
       </div>
 
       {/* Portalled to <body>: the deck is a size container, which would trap
