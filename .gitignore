@@ -5,6 +5,12 @@ node_modules/
 dist/
 coverage/
 
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
 # Logs
 *.log
 

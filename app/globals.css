@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* MAC brand system (see monashcoding-site): charcoal base, surface steps,
+   hairline borders, one yellow accent with charcoal text on it. Dark only. */
+@theme {
+  --color-background: #252525;
+  --color-foreground: #ffffff;
+  --color-surface: #1e1e1e;
+  --color-surface-deep: #1a1a1a;
+  --color-muted-foreground: #a0a0a0;
+  --color-accent: #ffe330;
+  --color-accent-foreground: #252525;
+  --color-destructive: #dc2626;
+
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+
+  --ease-reveal: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-wipe: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
