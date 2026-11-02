@@ -333,7 +333,7 @@ export function SessionStagePanel({
               </div>
             </div>
 
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-control border-2 border-border bg-card px-3 text-sm font-medium text-foreground transition-colors select-none hover:border-border-strong compact:min-h-9">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-control border-2 border-border bg-card px-3 text-base font-medium text-foreground transition-colors select-none hover:border-border-strong compact:min-h-9 compact:text-sm">
               <input
                 type="checkbox"
                 checked={session.autoAdvance}
@@ -347,85 +347,91 @@ export function SessionStagePanel({
 
           {isTimed ? (
             <div className="space-y-5 border-t border-border pt-4">
-              <div className="flex flex-wrap items-center gap-2">
-                {countdown.isRunning ? (
+              {/* Below sm: Pause/Stop share one row and the four nudges the
+                  next, so 44px touch buttons never wrap mid-group at 360px. */}
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="grid grid-cols-2 gap-2 sm:flex">
+                  {countdown.isRunning ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={loading}
+                      onClick={() => sendControl({ action: ControlAction.Pause })}
+                    >
+                      <Pause />
+                      Pause
+                    </Button>
+                  ) : countdown.isPaused ? (
+                    <Button
+                      size="sm"
+                      disabled={loading}
+                      onClick={() => sendControl({ action: ControlAction.Resume })}
+                    >
+                      <Play />
+                      Resume
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled>
+                      <Pause />
+                      Pause
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={loading || !countdown.hasTimer}
+                    onClick={() => sendControl({ action: ControlAction.ClearTimer })}
+                  >
+                    <Square />
+                    Stop timer
+                  </Button>
+                </div>
+
+                <div className="mx-1 hidden h-6 w-px bg-border sm:block" />
+
+                <div className="grid grid-cols-4 gap-2 sm:flex">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={loading || !countdown.hasTimer}
+                    onClick={() =>
+                      sendControl({ action: ControlAction.AdjustTimer, deltaMs: -5 * 60 * 1000 })
+                    }
+                  >
+                    -5m
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={loading || !countdown.hasTimer}
+                    onClick={() =>
+                      sendControl({ action: ControlAction.AdjustTimer, deltaMs: -1 * 60 * 1000 })
+                    }
+                  >
+                    -1m
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={loading}
-                    onClick={() => sendControl({ action: ControlAction.Pause })}
+                    onClick={() =>
+                      sendControl({ action: ControlAction.AdjustTimer, deltaMs: 1 * 60 * 1000 })
+                    }
                   >
-                    <Pause />
-                    Pause
+                    +1m
                   </Button>
-                ) : countdown.isPaused ? (
                   <Button
+                    variant="outline"
                     size="sm"
                     disabled={loading}
-                    onClick={() => sendControl({ action: ControlAction.Resume })}
+                    onClick={() =>
+                      sendControl({ action: ControlAction.AdjustTimer, deltaMs: 5 * 60 * 1000 })
+                    }
                   >
-                    <Play />
-                    Resume
+                    +5m
                   </Button>
-                ) : (
-                  <Button variant="outline" size="sm" disabled>
-                    <Pause />
-                    Pause
-                  </Button>
-                )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={loading || !countdown.hasTimer}
-                  onClick={() => sendControl({ action: ControlAction.ClearTimer })}
-                >
-                  <Square />
-                  Stop timer
-                </Button>
-
-                <div className="mx-1 hidden h-6 w-px bg-border sm:block" />
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={loading || !countdown.hasTimer}
-                  onClick={() =>
-                    sendControl({ action: ControlAction.AdjustTimer, deltaMs: -5 * 60 * 1000 })
-                  }
-                >
-                  -5m
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={loading || !countdown.hasTimer}
-                  onClick={() =>
-                    sendControl({ action: ControlAction.AdjustTimer, deltaMs: -1 * 60 * 1000 })
-                  }
-                >
-                  -1m
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={loading}
-                  onClick={() =>
-                    sendControl({ action: ControlAction.AdjustTimer, deltaMs: 1 * 60 * 1000 })
-                  }
-                >
-                  +1m
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={loading}
-                  onClick={() =>
-                    sendControl({ action: ControlAction.AdjustTimer, deltaMs: 5 * 60 * 1000 })
-                  }
-                >
-                  +5m
-                </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">

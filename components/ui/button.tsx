@@ -22,7 +22,7 @@ export const buttonVariants = cva(
       },
       size: {
         default: "h-11 gap-2 px-4 text-base compact:h-9 compact:gap-1.5 compact:px-3 compact:text-sm",
-        sm: "h-10 gap-1.5 px-3 text-sm compact:h-8 compact:gap-1 compact:px-2.5 compact:text-xs",
+        sm: "h-11 gap-1.5 px-3 text-sm compact:h-8 compact:gap-1 compact:px-2.5 compact:text-xs",
         lg: "h-12 gap-2 px-5 text-base compact:h-10 compact:px-4",
         icon: "size-11 compact:size-9",
       },

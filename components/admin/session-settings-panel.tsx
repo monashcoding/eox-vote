@@ -192,7 +192,7 @@ export function SessionSettingsPanel({
 
             <label
               htmlFor="edit-auto-advance"
-              className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground compact:min-h-0"
+              className="flex min-h-11 cursor-pointer items-center gap-3 text-base text-foreground compact:min-h-0 compact:text-sm"
             >
               <input
                 id="edit-auto-advance"

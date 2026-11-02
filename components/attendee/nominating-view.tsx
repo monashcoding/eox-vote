@@ -348,14 +348,12 @@ function OwnNominationRow({
               size="sm"
               disabled={busy}
               onClick={handleDelete}
-              className="min-h-11 compact:min-h-0"
             >
               {busy ? "Deleting..." : "Confirm delete"}
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="min-h-11 compact:min-h-0"
               disabled={busy}
               onClick={() => setConfirmingDelete(false)}
             >
