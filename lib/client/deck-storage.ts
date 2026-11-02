@@ -36,18 +36,36 @@ function hash32(text: string): number {
   return hash >>> 0;
 }
 
+/** mulberry32: small seeded PRNG returning floats in [0, 1). */
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /**
- * Orders items by a seeded hash of their id. The order is stable for a device
- * and unaffected by entries being added or removed.
+ * Seeded Fisher-Yates shuffle: every order is equally likely across seeds and
+ * the order is stable for a device. Items are sorted by id first, so the
+ * result depends only on the seed and the set of ids, not on input order.
  */
 export function shuffleBySeed<T extends { id: string }>(
   items: readonly T[],
   seed: string
 ): T[] {
-  return items
-    .map((item) => ({ item, key: hash32(`${seed}:${item.id}`) }))
-    .sort((a, b) => a.key - b.key || a.item.id.localeCompare(b.item.id))
-    .map((entry) => entry.item);
+  const result = [...items].sort((a, b) =>
+    a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+  );
+  const random = mulberry32(hash32(seed));
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 }
 
 export function loadSwipedIds(sessionId: string): string[] {
