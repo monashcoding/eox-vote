@@ -201,7 +201,6 @@ export function SessionStagePanel({
           )}
           {nextLabel && (
             <Button
-              variant="primary"
               size="sm"
               disabled={loading}
               onClick={handleNext}
@@ -273,10 +272,10 @@ export function SessionStagePanel({
                 </div>
                 <div>
                   {countdown.status === "running" && (
-                    <Badge variant="accent">Running</Badge>
+                    <Badge variant="default">Running</Badge>
                   )}
                   {countdown.status === "paused" && (
-                    <Badge variant="secondary">Paused</Badge>
+                    <Badge variant="outline">Paused</Badge>
                   )}
                   {countdown.status === "expired" && (
                     <Badge className="border-destructive/30 bg-destructive/15 text-destructive font-semibold">
@@ -324,7 +323,6 @@ export function SessionStagePanel({
                   </Button>
                 ) : countdown.isPaused ? (
                   <Button
-                    variant="primary"
                     size="sm"
                     disabled={loading}
                     onClick={() => sendControl({ action: ControlAction.Resume })}
@@ -433,7 +431,6 @@ export function SessionStagePanel({
                   <Button
                     type="submit"
                     variant="secondary"
-                    size="md"
                     disabled={loading || customMinutes <= 0}
                   >
                     <Timer className="h-4 w-4" />
@@ -460,7 +457,6 @@ export function SessionStagePanel({
                   <Button
                     type="submit"
                     variant="secondary"
-                    size="md"
                     disabled={loading || !customEndTime}
                   >
                     <Timer className="h-4 w-4" />

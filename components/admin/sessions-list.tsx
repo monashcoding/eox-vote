@@ -166,7 +166,6 @@ export function SessionsList({
           </p>
         </div>
         <Button
-          variant="primary"
           onClick={() => setShowCreate(!showCreate)}
           className="self-start sm:self-auto"
         >
@@ -262,7 +261,6 @@ export function SessionsList({
                 </Button>
                 <Button
                   type="submit"
-                  variant="primary"
                   disabled={creating || !name.trim()}
                 >
                   {creating ? "Creating..." : "Create Session"}
@@ -361,7 +359,7 @@ export function SessionsList({
                     {isConfirmingDelete ? (
                       <div className="flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 p-1">
                         <Button
-                          variant="danger"
+                          variant="destructive"
                           size="sm"
                           onClick={() => handleDelete(s.id)}
                           disabled={isBusy}

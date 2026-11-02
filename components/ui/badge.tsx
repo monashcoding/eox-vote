@@ -1,32 +1,49 @@
 import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { Stage } from "@/lib/api-types";
 import { cn } from "@/lib/utils";
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: "default" | "accent" | "secondary" | "outline";
-}
+export const badgeVariants = cva(
+  "inline-flex w-fit items-center justify-center gap-1 overflow-hidden whitespace-nowrap font-semibold transition-all [&_svg]:size-3",
+  {
+    variants: {
+      variant: {
+        default:
+          "rounded-tag bg-primary px-2 py-0.5 text-[11px] text-primary-foreground",
+        live: "rounded-tag border border-live/50 bg-live/10 px-2 py-0.5 text-[11px] text-live",
+        success:
+          "rounded-tag border border-success/50 bg-success/10 px-2 py-0.5 text-[11px] text-success",
+        info: "rounded-tag border border-info/50 bg-info/10 px-2 py-0.5 text-[11px] text-info",
+        danger:
+          "rounded-tag border border-danger/50 bg-danger/10 px-2 py-0.5 text-[11px] text-danger",
+        outline:
+          "rounded-control border-2 border-border bg-surface-soft px-2.5 py-1 text-xs text-muted",
+      },
+      /** Tag style: uppercase micro-label, per the eyebrow rule. */
+      tag: {
+        true: "uppercase tracking-[0.08em]",
+        false: "",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      tag: false,
+    },
+  }
+);
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLSpanElement>,
+    VariantProps<typeof badgeVariants> {}
 
 export function Badge({
   className,
-  variant = "default",
+  variant,
+  tag,
   ...props
 }: BadgeProps): React.JSX.Element {
-  const variantStyles = {
-    default: "bg-surface-deep text-foreground border border-white/10",
-    accent: "bg-accent text-accent-foreground font-semibold",
-    secondary: "bg-surface text-muted-foreground border border-white/10",
-    outline: "text-foreground border border-white/20",
-  };
-
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium uppercase tracking-[0.1em]",
-        variantStyles[variant],
-        className
-      )}
-      {...props}
-    />
+    <span className={cn(badgeVariants({ variant, tag }), className)} {...props} />
   );
 }
 
@@ -38,14 +55,15 @@ const stageLabels: Record<Stage, string> = {
   finished: "Finished",
 };
 
-const stageStyles: Record<Stage, string> = {
-  pending: "bg-white/5 text-muted-foreground border-white/10",
-  nominating: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  voting: "bg-accent/15 text-accent border-accent/30 font-semibold",
-  results: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  finished: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+const stageVariants: Record<Stage, NonNullable<BadgeProps["variant"]>> = {
+  pending: "outline",
+  nominating: "live",
+  voting: "live",
+  results: "info",
+  finished: "success",
 };
 
+/** Stage tag. Open stages (nominating, voting) get the pulsing live dot. */
 export function StagePill({
   stage,
   className,
@@ -53,33 +71,33 @@ export function StagePill({
   stage: Stage;
   className?: string;
 }): React.JSX.Element {
+  const isOpen = stage === Stage.Nominating || stage === Stage.Voting;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs uppercase tracking-[0.12em]",
-        stageStyles[stage] ?? stageStyles.pending,
-        className
-      )}
+    <Badge
+      variant={stageVariants[stage] ?? "outline"}
+      tag
+      className={cn(stage === Stage.Pending && "px-2 py-0.5 text-[11px]", className)}
     >
+      {isOpen && (
+        <span
+          aria-hidden
+          className="size-1.5 animate-pulse rounded-full bg-live motion-reduce:animate-none"
+        />
+      )}
       {stageLabels[stage] ?? stage}
-    </span>
+    </Badge>
   );
 }
 
+/** Marks the session attendees are currently looking at. Yellow: the active item. */
 export function CurrentBadge({
   className,
 }: {
   className?: string;
 }): React.JSX.Element {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-accent",
-        className
-      )}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+    <Badge tag className={className}>
       Current
-    </span>
+    </Badge>
   );
 }

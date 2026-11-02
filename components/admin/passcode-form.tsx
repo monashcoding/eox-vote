@@ -84,7 +84,6 @@ export function PasscodeForm({
 
             <Button
               type="submit"
-              variant="primary"
               className="w-full"
               disabled={loading || !passcode.trim()}
             >

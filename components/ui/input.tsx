@@ -1,22 +1,36 @@
 import * as React from "react";
+import { Input as InputPrimitive } from "@base-ui/react/input";
 import { cn } from "@/lib/utils";
 
-export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
+export type InputProps = InputPrimitive.Props;
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type = "text", disabled, ...props }, ref) => {
-    return (
-      <input
-        ref={ref}
-        type={type}
-        disabled={disabled}
-        className={cn(
-          "w-full rounded-md border border-white/10 bg-surface-deep px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors duration-150 ease-reveal focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed",
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
-Input.displayName = "Input";
+export function Input({ className, ...props }: InputProps): React.JSX.Element {
+  return (
+    <InputPrimitive
+      className={cn(
+        "h-11 w-full min-w-0 rounded-control border-2 border-border bg-field px-3 py-1 text-base text-foreground outline-none transition-colors duration-150 ease-reveal placeholder:text-subtle md:h-9 md:text-sm",
+        "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25",
+        "disabled:pointer-events-none disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+export function Textarea({
+  className,
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>): React.JSX.Element {
+  return (
+    <textarea
+      className={cn(
+        "min-h-24 w-full min-w-0 rounded-control border-2 border-border bg-field p-3 text-base text-foreground outline-none transition-colors duration-150 ease-reveal placeholder:text-subtle md:text-sm",
+        "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25",
+        "disabled:pointer-events-none disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  );
+}

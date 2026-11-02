@@ -66,7 +66,7 @@ export function SessionHeader({
 
         <div className="flex items-center gap-2">
           <Button
-            variant={session.isCurrent ? "secondary" : "primary"}
+            variant={session.isCurrent ? "secondary" : "default"}
             size="sm"
             onClick={handleToggleCurrent}
             disabled={updatingCurrent}

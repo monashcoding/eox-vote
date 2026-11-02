@@ -287,7 +287,7 @@ function OwnNominationRow({
 
   if (editing) {
     return (
-      <Card asSurfaceDeep className="p-4">
+      <Card inset className="p-4">
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
@@ -345,7 +345,7 @@ function OwnNominationRow({
   }
 
   return (
-    <Card asSurfaceDeep className="space-y-3 p-3">
+    <Card inset className="space-y-3 p-3">
       <div className="flex items-center gap-3">
         <img
           src={nominee.photoUrl}
@@ -357,7 +357,7 @@ function OwnNominationRow({
         </p>
         {confirmingDelete ? (
           <div className="flex items-center gap-1">
-            <Button variant="danger" size="sm" disabled={busy} onClick={handleDelete}>
+            <Button variant="destructive" size="sm" disabled={busy} onClick={handleDelete}>
               {busy ? "Deleting..." : "Confirm delete"}
             </Button>
             <Button

@@ -1,47 +1,52 @@
 import * as React from "react";
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
-export type ButtonSize = "sm" | "md" | "lg";
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-}
-
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", disabled, ...props }, ref) => {
-    const variantStyles: Record<ButtonVariant, string> = {
-      primary:
-        "bg-accent text-accent-foreground font-semibold hover:brightness-105 active:scale-[0.98]",
-      secondary:
-        "bg-surface text-foreground border border-white/10 hover:border-white/20 active:scale-[0.98]",
-      ghost:
-        "text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-[0.98]",
-      danger:
-        "bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 active:scale-[0.98]",
-    };
-
-    const sizeStyles: Record<ButtonSize, string> = {
-      sm: "px-3 py-1.5 text-xs rounded-md",
-      md: "px-4 py-2 text-sm rounded-md",
-      lg: "px-5 py-2.5 text-base rounded-md",
-    };
-
-    return (
-      <button
-        ref={ref}
-        disabled={disabled}
-        className={cn(
-          "inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 ease-reveal select-none cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed",
-          variantStyles[variant],
-          sizeStyles[size],
-          className
-        )}
-        {...props}
-      />
-    );
+export const buttonVariants = cva(
+  "inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control font-medium whitespace-nowrap transition-all duration-150 ease-reveal outline-none select-none active:scale-[0.98] motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-2 border-transparent bg-primary font-semibold text-primary-foreground hover:bg-primary/90",
+        outline:
+          "border-2 border-border bg-card text-foreground hover:border-border-strong hover:bg-accent",
+        secondary:
+          "border-2 border-border bg-surface-soft text-foreground hover:bg-accent",
+        ghost:
+          "border-2 border-transparent text-muted hover:bg-accent hover:text-foreground",
+        destructive:
+          "border-2 border-danger/40 bg-danger/10 text-danger hover:bg-danger/20",
+        link: "h-auto border-none p-0 text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-11 gap-2 px-4 text-base md:h-9 md:gap-1.5 md:px-3 md:text-sm",
+        sm: "h-10 gap-1.5 px-3 text-sm md:h-8 md:gap-1 md:px-2.5 md:text-xs",
+        lg: "h-12 gap-2 px-5 text-base md:h-10 md:px-4",
+        icon: "size-11 md:size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
   }
 );
-Button.displayName = "Button";
+
+export type ButtonProps = ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants>;
+
+export function Button({
+  className,
+  variant,
+  size,
+  ...props
+}: ButtonProps): React.JSX.Element {
+  return (
+    <ButtonPrimitive
+      className={cn(buttonVariants({ variant, size }), className)}
+      {...props}
+    />
+  );
+}

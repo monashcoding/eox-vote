@@ -2,19 +2,20 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  asSurfaceDeep?: boolean;
+  /** Sunken variant: a grouped region inside a card (surface-soft). */
+  inset?: boolean;
 }
 
 export function Card({
   className,
-  asSurfaceDeep = false,
+  inset = false,
   ...props
 }: CardProps): React.JSX.Element {
   return (
     <div
       className={cn(
-        "rounded-lg border border-white/10 p-6",
-        asSurfaceDeep ? "bg-surface-deep" : "bg-surface",
+        "rounded-panel border-2 border-border p-4 transition-colors sm:p-6",
+        inset ? "bg-surface-soft" : "bg-card shadow-card",
         className
       )}
       {...props}
@@ -27,10 +28,7 @@ export function CardHeader({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>): React.JSX.Element {
   return (
-    <div
-      className={cn("flex flex-col space-y-1.5 pb-4", className)}
-      {...props}
-    />
+    <div className={cn("flex flex-col gap-1 pb-4", className)} {...props} />
   );
 }
 
@@ -41,7 +39,7 @@ export function CardTitle({
   return (
     <h3
       className={cn(
-        "text-lg font-semibold tracking-tight text-foreground",
+        "text-base font-semibold leading-normal text-foreground",
         className
       )}
       {...props}
@@ -49,9 +47,16 @@ export function CardTitle({
   );
 }
 
+export function CardDescription({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLParagraphElement>): React.JSX.Element {
+  return <p className={cn("text-sm text-muted", className)} {...props} />;
+}
+
 export function CardContent({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>): React.JSX.Element {
-  return <div className={cn("pt-0", className)} {...props} />;
+  return <div className={className} {...props} />;
 }

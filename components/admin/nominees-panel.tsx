@@ -152,7 +152,7 @@ function NomineeRow({
             {confirmingDelete ? (
               <>
                 <Button
-                  variant="danger"
+                  variant="destructive"
                   size="sm"
                   disabled={busy}
                   onClick={() => void handleDelete()}

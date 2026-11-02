@@ -177,7 +177,6 @@ export function SessionSettingsPanel({
             <div className="flex justify-end pt-2">
               <Button
                 type="submit"
-                variant="primary"
                 disabled={saving || !name.trim()}
               >
                 {saving ? "Saving..." : "Save changes"}
@@ -208,7 +207,7 @@ export function SessionSettingsPanel({
             {showConfirmDelete ? (
               <div className="flex items-center gap-2">
                 <Button
-                  variant="danger"
+                  variant="destructive"
                   size="sm"
                   onClick={handleDelete}
                   disabled={deleting}
@@ -226,7 +225,7 @@ export function SessionSettingsPanel({
               </div>
             ) : (
               <Button
-                variant="danger"
+                variant="destructive"
                 size="sm"
                 onClick={() => setShowConfirmDelete(true)}
               >
