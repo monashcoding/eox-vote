@@ -332,17 +332,17 @@ function OwnNominationRow({
 
   return (
     <Card inset className="space-y-3 p-3 sm:p-3">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <img
           src={nominee.photoUrl}
           alt={`${nominee.firstName} ${nominee.lastName}`}
           className="size-16 shrink-0 rounded-full object-cover"
         />
-        <p className="min-w-0 flex-1 truncate text-base font-semibold compact:text-sm">
+        <p className="min-w-24 flex-1 text-base font-semibold wrap-break-word compact:text-sm">
           {nominee.firstName} {nominee.lastName}
         </p>
         {confirmingDelete ? (
-          <div className="flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-1">
             <Button
               variant="destructive"
               size="sm"
@@ -361,7 +361,7 @@ function OwnNominationRow({
             </Button>
           </div>
         ) : (
-          <div className="flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"

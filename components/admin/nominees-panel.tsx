@@ -135,7 +135,7 @@ function NomineeRow({
             </Button>
           </form>
         ) : (
-          <p className="min-w-0 flex-1 truncate text-base font-semibold compact:text-sm">
+          <p className="min-w-32 flex-1 text-base font-semibold wrap-break-word compact:text-sm">
             {nominee.firstName} {nominee.lastName}
           </p>
         )}
@@ -150,7 +150,7 @@ function NomineeRow({
         )}
 
         {!editing && (
-          <div className="flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-1">
             {confirmingDelete ? (
               <>
                 <Button
