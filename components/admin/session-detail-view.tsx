@@ -39,11 +39,15 @@ export function SessionDetailView({
       setSession(data);
       setError(null);
     } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Could not load session details");
+      // A deleted session can't come back, so drop it and show the error
+      // view. Any other failure keeps the last good detail on screen: the
+      // panels stay mounted, so half-typed edits and the scroll survive.
+      if (err instanceof ApiError && err.status === 404) {
+        setSession(null);
       }
+      setError(
+        err instanceof ApiError ? err.message : "Could not load session details"
+      );
     } finally {
       setLoading(false);
     }
@@ -62,7 +66,7 @@ export function SessionDetailView({
     );
   }
 
-  if (error || !session) {
+  if (!session) {
     return (
       <div className="space-y-6">
         <Link
@@ -87,17 +91,40 @@ export function SessionDetailView({
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <SessionHeader session={session} onRefresh={fetchSession} />
-
+    <>
+      <PollFailedNote visible={error !== null} />
       <div className="space-y-6 sm:space-y-8">
-        <SessionStagePanel session={session} onRefresh={fetchSession} />
-        <NomineesPanel session={session} onRefresh={fetchSession} />
-        <ResultsPanel session={session} onRefresh={fetchSession} />
-        <QrPanel session={session} />
+        <SessionHeader session={session} onRefresh={fetchSession} />
 
-        <SessionSettingsPanel session={session} onRefresh={fetchSession} />
+        <div className="space-y-6 sm:space-y-8">
+          <SessionStagePanel session={session} onRefresh={fetchSession} />
+          <NomineesPanel session={session} onRefresh={fetchSession} />
+          <ResultsPanel session={session} onRefresh={fetchSession} />
+          <QrPanel session={session} />
+
+          <SessionSettingsPanel session={session} onRefresh={fetchSession} />
+        </div>
       </div>
+    </>
+  );
+}
+
+/**
+ * Shown while polls fail but the last good detail is still on screen. It sticks
+ * just under the admin header and takes no space in the flow, so appearing and
+ * clearing never shifts the panels under a host who is scrolled or typing.
+ */
+function PollFailedNote({ visible }: { visible: boolean }): React.JSX.Element {
+  return (
+    <div
+      role="status"
+      className="pointer-events-none sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 h-0"
+    >
+      {visible && (
+        <p className="absolute inset-x-0 top-3 mx-auto w-fit max-w-full rounded-control border-2 border-danger/50 bg-card px-3 py-2 text-sm font-medium text-danger shadow-float">
+          Can&apos;t reach the server. Retrying…
+        </p>
+      )}
     </div>
   );
 }
