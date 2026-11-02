@@ -515,13 +515,14 @@ export function NominatingView({
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-muted">
-              Lost access to your nominations, for example after clearing your
-              browser data or switching phones? Ask a host and they can fix it
-              for you.
-            </p>
           </section>
         )}
+
+        <p className="text-xs text-muted">
+          Lost access to your nominations, for example after clearing your
+          browser data or switching phones? Ask a host and they can fix it for
+          you.
+        </p>
       </TabsContent>
 
       <TabsContent value={Tab.All} className="mt-6">
