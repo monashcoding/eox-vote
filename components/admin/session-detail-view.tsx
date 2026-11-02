@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SessionHeader } from "./session-header";
 import { SessionSettingsPanel } from "./session-settings-panel";
+import { SessionStagePanel } from "./session-stage-panel";
 
 interface SessionDetailViewProps {
   sessionId: string;
@@ -91,7 +92,8 @@ export function SessionDetailView({
 
       {/* Panels container */}
       <div className="space-y-8">
-        {/* Stage & Timer Panel (Engine agent adds here) */}
+        {/* Stage & Timer Panel */}
+        <SessionStagePanel session={session} onRefresh={fetchSession} />
         {/* Nominees Panel (Nominee-management agent adds here) */}
         {/* Results Panel (Results agent adds here) */}
         {/* QR Code Panel (QR agent adds here) */}

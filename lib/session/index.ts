@@ -2,9 +2,11 @@ import { eq, sql } from "drizzle-orm";
 import {
   AdminSessionDetailDto,
   AdminSessionSummaryDto,
+  ControlRequest,
   Stage,
   TimerDto,
 } from "../api-types";
+import { applyAutoAdvance, applyControl, canAutoAdvance } from "./engine";
 import { db } from "../db";
 import { appSettings, nominees, sessions, votes } from "../db/schema";
 import { HttpError } from "../http";
@@ -125,21 +127,111 @@ export async function listAdminSessions(): Promise<{
   };
 }
 
-export async function getAdminSessionDetail(
+export async function syncSession(
   id: string
+): Promise<typeof sessions.$inferSelect> {
+  return await db.transaction(async (tx) => {
+    const [session] = await tx
+      .select()
+      .from(sessions)
+      .where(eq(sessions.id, id))
+      .for("update");
+
+    if (!session) {
+      throw new HttpError(404, "Session not found");
+    }
+
+    const now = Date.now();
+    let current = session;
+    let changed = false;
+    let iterations = 0;
+
+    while (canAutoAdvance(current, now) && iterations < 5) {
+      current = {
+        ...current,
+        ...applyAutoAdvance(current, now),
+      };
+      changed = true;
+      iterations++;
+    }
+
+    if (!changed) {
+      return session;
+    }
+
+    const [updated] = await tx
+      .update(sessions)
+      .set({
+        stage: current.stage,
+        startedAt: current.startedAt ? new Date(current.startedAt) : null,
+        finishedAt: current.finishedAt ? new Date(current.finishedAt) : null,
+        timerEndsAt: current.timerEndsAt ? new Date(current.timerEndsAt) : null,
+        timerRemainingMs: current.timerRemainingMs,
+        revealedCount: current.revealedCount,
+        updatedAt: new Date(),
+      })
+      .where(eq(sessions.id, id))
+      .returning();
+
+    return updated;
+  });
+}
+
+export async function applyAdminSessionControl(
+  id: string,
+  request: ControlRequest
 ): Promise<AdminSessionDetailDto> {
   const currentSessionId = await getCurrentSessionId();
 
-  const [session] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, id))
-    .limit(1);
+  return await db.transaction(async (tx) => {
+    const [session] = await tx
+      .select()
+      .from(sessions)
+      .where(eq(sessions.id, id))
+      .for("update");
 
-  if (!session) {
-    throw new HttpError(404, "Session not found");
-  }
+    if (!session) {
+      throw new HttpError(404, "Session not found");
+    }
 
+    const now = Date.now();
+    let current = session;
+    let iterations = 0;
+
+    // Auto-advance if expired before applying control
+    while (canAutoAdvance(current, now) && iterations < 5) {
+      current = {
+        ...current,
+        ...applyAutoAdvance(current, now),
+      };
+      iterations++;
+    }
+
+    const nextState = applyControl(current, request, now);
+
+    const [updated] = await tx
+      .update(sessions)
+      .set({
+        stage: nextState.stage,
+        startedAt: nextState.startedAt ? new Date(nextState.startedAt) : null,
+        finishedAt: nextState.finishedAt ? new Date(nextState.finishedAt) : null,
+        timerEndsAt: nextState.timerEndsAt ? new Date(nextState.timerEndsAt) : null,
+        timerRemainingMs: nextState.timerRemainingMs,
+        revealedCount: nextState.revealedCount,
+        updatedAt: new Date(),
+      })
+      .where(eq(sessions.id, id))
+      .returning();
+
+    return toAdminSessionDetailDto(updated, currentSessionId);
+  });
+}
+
+export async function getAdminSessionDetail(
+  id: string
+): Promise<AdminSessionDetailDto> {
+  const session = await syncSession(id);
+  const currentSessionId = await getCurrentSessionId();
   return toAdminSessionDetailDto(session, currentSessionId);
 }
 

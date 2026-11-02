@@ -89,17 +89,27 @@ export interface AdminSessionDetailDto {
   podium?: PodiumPlaceDto[];
 }
 
+export const ControlAction = {
+  Next: "next",
+  Previous: "previous",
+  Pause: "pause",
+  Resume: "resume",
+  ClearTimer: "clearTimer",
+  AdjustTimer: "adjustTimer",
+  SetTimer: "setTimer",
+} as const;
+
+export type ControlAction = (typeof ControlAction)[keyof typeof ControlAction];
+
+export type SimpleControlAction =
+  | typeof ControlAction.Next
+  | typeof ControlAction.Previous
+  | typeof ControlAction.Pause
+  | typeof ControlAction.Resume
+  | typeof ControlAction.ClearTimer;
+
 export type ControlRequest =
-  | {
-      action:
-        | "next"
-        | "previous"
-        | "pause"
-        | "resume"
-        | "clearTimer"
-        | "revealNext"
-        | "hideLast";
-    }
-  | { action: "adjustTimer"; deltaMs: number }
-  | { action: "setTimer"; durationMs: number }
-  | { action: "setTimer"; endsAt: number };
+  | { action: SimpleControlAction }
+  | { action: typeof ControlAction.AdjustTimer; deltaMs: number }
+  | { action: typeof ControlAction.SetTimer; durationMs: number }
+  | { action: typeof ControlAction.SetTimer; endsAt: number };
