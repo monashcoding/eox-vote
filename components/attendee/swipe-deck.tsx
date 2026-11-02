@@ -358,8 +358,10 @@ export function SwipeDeck(props: {
         })}
       </div>
 
-      {/* Control buttons: same actions as the gestures */}
-      <div className="flex shrink-0 items-center gap-6 short:flex-col">
+      {/* Control buttons: same actions as the gestures. Beside the card in
+          short viewports they sit at its bottom edge, in thumb reach and
+          clear of the vote error that floats over the top of the deck. */}
+      <div className="flex shrink-0 items-center gap-6 short:flex-col short:self-end">
         <Button
           type="button"
           variant="outline"

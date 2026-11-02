@@ -8,6 +8,16 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * `ApiError.status` when no response arrived at all (offline, server down,
+ * request blocked). No HTTP response has status 0, so callers that branch on
+ * real statuses (401, 404, 409, 503) never match it.
+ */
+export const NETWORK_ERROR_STATUS = 0;
+
+const NETWORK_ERROR_MESSAGE =
+  "Could not reach the server. Check your connection and try again.";
+
 export async function api<T>(
   path: string,
   init?: RequestInit
@@ -23,11 +33,21 @@ export async function api<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(path, {
-    ...init,
-    cache: "no-store",
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      ...init,
+      cache: "no-store",
+      headers,
+    });
+  } catch (err: unknown) {
+    // fetch rejects with a TypeError ("Failed to fetch") on network failure;
+    // an abort is a DOMException and passes through unchanged.
+    if (err instanceof TypeError) {
+      throw new ApiError(NETWORK_ERROR_STATUS, NETWORK_ERROR_MESSAGE);
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     let errorMessage = res.statusText || "Request failed";

@@ -144,7 +144,8 @@ export function AttendeeApp(): React.JSX.Element {
     // deck sizes its card from the height left over, which needs a definite
     // height all the way down (taller content still scrolls past it).
     <main className="safe-t safe-b flex min-h-dvh flex-col bg-background text-foreground has-[[data-swipe-deck]]:h-dvh">
-      <header className="border-b-2 border-border bg-card/95 px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5 short:py-2">
+      {/* Above the section (which has its own stacking context) so the offline note can overhang it. */}
+      <header className="relative z-10 border-b-2 border-border bg-card/95 px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5 short:py-2">
         <div className="mx-auto flex max-w-xl flex-col items-center space-y-2 text-center short:space-y-0.5">
           <Eyebrow className="short:hidden">Monash Association of Coding</Eyebrow>
           {/* The pill stays beside the title and long names are clamped, so
@@ -165,7 +166,18 @@ export function AttendeeApp(): React.JSX.Element {
               <CountdownText copy={countdownCopy} formatted={countdown.formatted} />
             </p>
           )}
-          {offline && <OfflineNote />}
+        </div>
+        {/*
+          Takes no space: it straddles the header's bottom edge, over the
+          padding on either side, so appearing and clearing never moves the
+          voting deck. Always mounted so screen readers hear it appear.
+        */}
+        <div role="status" className="pointer-events-none absolute inset-x-0 top-full h-0 px-4">
+          {offline && (
+            <p className="mx-auto w-fit max-w-full -translate-y-1/2 rounded-control border-2 border-danger/50 bg-card px-3 py-1 text-sm font-medium text-danger short:py-0 short:text-xs">
+              Can&apos;t reach the server. Retrying…
+            </p>
+          )}
         </div>
       </header>
 

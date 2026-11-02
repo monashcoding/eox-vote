@@ -165,6 +165,8 @@ export function VotingView({
     });
 
   const handleSwipe = (card: SwipeCard, direction: SwipeDirection) => {
+    // A new swipe or skip moves on from the last failed vote.
+    setError(null);
     updateSwiped((current) =>
       current.includes(card.id) ? current : [...current, card.id]
     );
@@ -186,6 +188,7 @@ export function VotingView({
       imageUrl: nominee.photoUrl,
     }));
   const votedCount = ordered.filter((nominee) => voted.has(nominee.id)).length;
+  const deckShown = tab === Tab.Swipe && cards.length > 0;
 
   const grid = (
     <VoteGrid
@@ -208,7 +211,7 @@ export function VotingView({
         <TabsTrigger value={Tab.All}>All ({ordered.length})</TabsTrigger>
       </TabsList>
 
-      <ErrorNote message={error} className="mt-4" />
+      {!deckShown && <ErrorNote message={error} className="mt-4" />}
 
       <TabsContent value={Tab.Swipe} className="mt-4 flex flex-1 flex-col sm:mt-6 short:mt-3">
         {ordered.length === 0 ? (
@@ -218,7 +221,14 @@ export function VotingView({
             description="Nobody was nominated in this session."
           />
         ) : cards.length > 0 ? (
-          <div className="flex flex-1 flex-col gap-4 short:gap-2">
+          <div className="relative flex flex-1 flex-col gap-4 short:gap-2">
+            {/* Floats over the progress text and the top of the card, so it
+                never moves the deck; opaque so it reads over the photo. */}
+            {error && (
+              <div className="absolute inset-x-0 top-0 z-40 rounded-control bg-background">
+                <ErrorNote message={error} />
+              </div>
+            )}
             <div className="text-center">
               <Eyebrow>
                 {cards.length} of {ordered.length} left
