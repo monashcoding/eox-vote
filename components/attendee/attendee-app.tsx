@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 import { MacLogo } from "@/components/ui/mac-logo";
-import { CollabLogos, CollabShortName } from "./collab-mark";
+import { CollabLogos, CollabMark, CollabShortName } from "./collab-mark";
 import { NominatingView } from "./nominating-view";
 import { ResultsView } from "./results-view";
 import { WaitingTitle } from "./waiting-title";
@@ -125,21 +125,19 @@ export function AttendeeApp(): React.JSX.Element {
           The name beside the logo is stacked over three lines so the logo row
           stays narrow: Min, who peeks up on the right over "Dressed", then
           fits beside it, and the title can sit right under the logo with or
-          without an event name. With a partner society the two logos sit
-          side by side and the short names go under them, for the same reason.
+          without an event name. With a partner society each short name sits
+          outside its logo, with one × between the logos, and a partner with
+          no short name wraps its full name over up to three lines, for the
+          same reason.
         */}
         {session?.sponsor ? (
-          <div className="flex flex-col items-center gap-2">
-            <CollabLogos
-              sponsor={session.sponsor}
-              size={48}
-              named
-              className="gap-2.5 text-lg"
-            />
-            <Eyebrow className="line-clamp-2 max-w-[12rem] text-xs leading-snug text-balance sm:text-sm">
-              <CollabShortName sponsor={session.sponsor} />
-            </Eyebrow>
-          </div>
+          <CollabMark
+            sponsor={session.sponsor}
+            size={48}
+            className="gap-2.5 text-xs leading-snug sm:text-sm"
+            crossClassName="text-lg"
+            nameClassName="line-clamp-3 max-w-[9rem] text-balance"
+          />
         ) : (
           <div className="flex items-center gap-3">
             <MacLogo size={48} decorative />
