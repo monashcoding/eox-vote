@@ -128,8 +128,23 @@ export function AttendeeApp(): React.JSX.Element {
             of Coding
           </Eyebrow>
         </div>
-        {/* The top margin is in em so it always clears Min, who rises about 1.45em above the line. */}
-        <h1 className="mt-[1.6em] text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
+        {/*
+          With a pending event, its name is the first title line and Min
+          overlaps that line, so the title can sit close to the logo. Without
+          one, the top margin (in em, so it scales with the text) keeps Min, who
+          rises about 1.45em above "Dressed", clear of the logo.
+        */}
+        <h1
+          className={cn(
+            "text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight",
+            session ? "mt-6" : "mt-[1.6em]"
+          )}
+        >
+          {session && (
+            <span className="mb-4 block text-balance wrap-break-word">
+              {session.name}
+            </span>
+          )}
           Best{" "}
           <span className="relative isolate inline-block">
             {/* Min peeks over the top edge of the highlight from behind it. */}
