@@ -133,7 +133,8 @@ export function PhotoPreview({
                   }}
                   className="relative flex min-h-0 max-w-full cursor-grab touch-pan-y select-none active:cursor-grabbing"
                 >
-                  <PreviewImage photo={photo} />
+                  {/* The surface takes the pointer, as the deck's cards do. */}
+                  <PreviewImage photo={photo} className="pointer-events-none" />
                   <SwipeTag tag={tag} />
                 </div>
               ) : (
@@ -161,7 +162,13 @@ export function PhotoPreview({
   );
 }
 
-function PreviewImage({ photo }: { photo: PreviewPhoto }): React.JSX.Element {
+function PreviewImage({
+  photo,
+  className,
+}: {
+  photo: PreviewPhoto;
+  className?: string;
+}): React.JSX.Element {
   return (
     <img
       data-preview-keep
@@ -169,8 +176,8 @@ function PreviewImage({ photo }: { photo: PreviewPhoto }): React.JSX.Element {
       alt={photo.name}
       draggable={false}
       className={cn(
-        "pointer-events-none min-h-0 max-w-full rounded-panel object-contain select-none",
-        "transition-transform duration-200 ease-reveal motion-safe:in-data-[starting-style]:scale-95 motion-safe:in-data-[ending-style]:scale-95"
+        "min-h-0 max-w-full rounded-panel object-contain transition-transform duration-200 ease-reveal motion-safe:in-data-[starting-style]:scale-95 motion-safe:in-data-[ending-style]:scale-95",
+        className
       )}
     />
   );
