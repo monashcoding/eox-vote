@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
 
@@ -43,7 +43,21 @@ function pool(): pg.Pool {
   return globalForDb.__pgPool;
 }
 
-export const db = drizzle({ client: pool(), schema });
+type Db = NodePgDatabase<typeof schema> & { $client: pg.Pool };
+
+let instance: Db | undefined;
+
+/**
+ * Created on first use, so importing this module (as `next build` does when
+ * it collects route config) needs no DATABASE_URL and opens no connection.
+ */
+export const db = new Proxy({} as Db, {
+  get(_target, prop) {
+    instance ??= drizzle({ client: pool(), schema });
+    const value: unknown = Reflect.get(instance, prop, instance);
+    return typeof value === "function" ? value.bind(instance) : value;
+  },
+});
 
 export type DbTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
