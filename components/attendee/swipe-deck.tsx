@@ -588,7 +588,7 @@ export function SwipeDeck(props: {
             <div
               aria-hidden
               data-swipe-glow="left"
-              className="pointer-events-none fixed inset-y-0 left-0 z-50 w-[calc(5rem+env(safe-area-inset-left,0px))] bg-linear-to-r from-danger/45 to-transparent"
+              className="pointer-events-none fixed inset-y-0 left-0 z-50 w-[calc(7.5rem+env(safe-area-inset-left,0px))] bg-linear-to-r from-danger/45 to-transparent"
               style={{
                 opacity: glowSide === "left" ? glowOpacity : 0,
                 transition: glowTransition,
@@ -597,7 +597,7 @@ export function SwipeDeck(props: {
             <div
               aria-hidden
               data-swipe-glow="right"
-              className="pointer-events-none fixed inset-y-0 right-0 z-50 w-[calc(5rem+env(safe-area-inset-right,0px))] bg-linear-to-l from-success/45 to-transparent"
+              className="pointer-events-none fixed inset-y-0 right-0 z-50 w-[calc(7.5rem+env(safe-area-inset-right,0px))] bg-linear-to-l from-success/45 to-transparent"
               style={{
                 opacity: glowSide === "right" ? glowOpacity : 0,
                 transition: glowTransition,
