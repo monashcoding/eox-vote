@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Eye, EyeOff, ImagePlus, Pencil, Trash2 } from "lucide-react";
+import { Eye, EyeOff, ImagePlus, Pencil, Search, Trash2, X } from "lucide-react";
 import type { AdminNomineeDto, AdminSessionDetailDto } from "@/lib/api-types";
 import { useAdminApi } from "./admin-gate";
 import { errorMessage } from "@/lib/client/error-message";
+import { matchesNameQuery } from "@/lib/client/name-search";
 import { resizeImage } from "@/lib/client/resize-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,10 +20,13 @@ interface NomineesPanelProps {
 function NomineeRow({
   nominee,
   showVotes,
+  hidden,
   onRefresh,
 }: {
   nominee: AdminNomineeDto;
   showVotes: boolean;
+  /** Filtered out by the search. Hidden rather than unmounted so an open edit survives. */
+  hidden: boolean;
   onRefresh: () => Promise<void>;
 }): React.JSX.Element {
   const adminApi = useAdminApi();
@@ -89,7 +93,10 @@ function NomineeRow({
   // everything else (name, votes, actions, edit form, delete confirm, errors)
   // stays in the column beside it, so wrapped controls never read as the next row's.
   return (
-    <li className="flex items-start gap-3 rounded-panel border-2 border-border bg-surface-soft p-3">
+    <li
+      hidden={hidden}
+      className="flex items-start gap-3 rounded-panel border-2 border-border bg-surface-soft p-3"
+    >
       <img
         src={nominee.photoUrl}
         alt={`${nominee.firstName} ${nominee.lastName}`}
@@ -233,7 +240,15 @@ export function NomineesPanel({
   onRefresh,
 }: NomineesPanelProps): React.JSX.Element {
   const [showVotes, setShowVotes] = React.useState(false);
+  const [query, setQuery] = React.useState("");
   const nominees = session.nominees;
+  const matchingIds = new Set(
+    nominees
+      .filter((n) => matchesNameQuery(n.firstName, n.lastName, query))
+      .map((n) => n.id)
+  );
+  const matchCount = matchingIds.size;
+  const searching = query.trim() !== "";
 
   return (
     <Card>
@@ -257,16 +272,50 @@ export function NomineesPanel({
             No nominations yet. They appear here as attendees submit them.
           </p>
         ) : (
-          <ul className="space-y-3">
-            {nominees.map((nominee) => (
-              <NomineeRow
-                key={nominee.id}
-                nominee={nominee}
-                showVotes={showVotes}
-                onRefresh={onRefresh}
+          <div className="space-y-3">
+            <div className="relative">
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
               />
-            ))}
-          </ul>
+              <Input
+                type="search"
+                aria-label="Search nominees by name"
+                placeholder="Search by name"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="px-9 [&::-webkit-search-cancel-button]:hidden"
+              />
+              {query && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => setQuery("")}
+                  className="absolute top-1/2 right-0 flex size-11 -translate-y-1/2 items-center justify-center rounded-control text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 compact:size-9"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+            {searching && (
+              <p aria-live="polite" className="text-xs font-medium text-muted">
+                {matchCount === 0
+                  ? `No nominees match "${query.trim()}".`
+                  : `Showing ${matchCount} of ${nominees.length}`}
+              </p>
+            )}
+            <ul className="space-y-3">
+              {nominees.map((nominee) => (
+                <NomineeRow
+                  key={nominee.id}
+                  nominee={nominee}
+                  showVotes={showVotes}
+                  hidden={!matchingIds.has(nominee.id)}
+                  onRefresh={onRefresh}
+                />
+              ))}
+            </ul>
+          </div>
         )}
       </CardContent>
     </Card>
