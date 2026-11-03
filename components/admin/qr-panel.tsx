@@ -48,18 +48,27 @@ async function loadCanvasFonts(fontFamily: string): Promise<void> {
 }
 
 /**
- * Loads the MAC logo for the canvas; the PNG waits for it like the fonts. The
- * logo is decoration, so if it cannot load the code is drawn without it.
+ * Loads a logo for the canvas; the PNG waits for it like the fonts. Logos are
+ * decoration, so if one cannot load the code is drawn without it.
  */
-async function loadLogo(): Promise<HTMLImageElement | undefined> {
+async function loadLogo(src: string): Promise<HTMLImageElement | undefined> {
   const image = new Image();
-  image.src = "/mac.svg";
+  image.src = src;
   try {
     await image.decode();
     return image;
   } catch {
     return undefined;
   }
+}
+
+/** MAC's logo, then the collaborating society's (if any), both loaded. */
+async function loadLogos(sponsorLogoUrl: string | undefined) {
+  const [logo, sponsorLogo] = await Promise.all([
+    loadLogo("/mac.svg"),
+    sponsorLogoUrl ? loadLogo(sponsorLogoUrl) : undefined,
+  ]);
+  return { logo, sponsorLogo };
 }
 
 export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
@@ -72,6 +81,7 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
   const trimmedUrl = url.trim();
   const urlError = validateUrl(url);
   const caption = session.name;
+  const sponsorLogoUrl = session.sponsor?.logoUrl;
 
   React.useEffect(() => {
     const canvas = previewRef.current;
@@ -81,9 +91,12 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
 
     void (async () => {
       try {
-        const [logo] = await Promise.all([loadLogo(), loadCanvasFonts(fontFamily)]);
+        const [logos] = await Promise.all([
+          loadLogos(sponsorLogoUrl),
+          loadCanvasFonts(fontFamily),
+        ]);
         if (cancelled) return;
-        renderQrImage(canvas, { caption, url: trimmedUrl, logo }, fontFamily);
+        renderQrImage(canvas, { caption, url: trimmedUrl, ...logos }, fontFamily);
         setRenderError(null);
       } catch (err: unknown) {
         if (cancelled) return;
@@ -98,7 +111,7 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [caption, trimmedUrl, urlError]);
+  }, [caption, trimmedUrl, urlError, sponsorLogoUrl]);
 
   const problem = urlError ?? renderError;
 
@@ -109,8 +122,11 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
     try {
       const canvas = document.createElement("canvas");
       const fontFamily = getComputedStyle(document.body).fontFamily;
-      const [logo] = await Promise.all([loadLogo(), loadCanvasFonts(fontFamily)]);
-      renderQrImage(canvas, { caption, url: trimmedUrl, logo }, fontFamily);
+      const [logos] = await Promise.all([
+        loadLogos(sponsorLogoUrl),
+        loadCanvasFonts(fontFamily),
+      ]);
+      renderQrImage(canvas, { caption, url: trimmedUrl, ...logos }, fontFamily);
       // Executor form on purpose: Promise.withResolvers is missing on iOS < 17.4.
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob(resolve, "image/png");

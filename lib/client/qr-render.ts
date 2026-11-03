@@ -16,6 +16,8 @@ const URL_FONT_PX = 40;
 const URL_LINE_PX = 52;
 const GAP_PX = 56;
 const LOGO_PX = 176;
+const LOGO_GAP_PX = 48;
+const CROSS_FONT_PX = 64;
 const MAX_CAPTION_LINES = 3;
 const MAX_URL_LINES = 4;
 
@@ -24,6 +26,11 @@ export interface QrImageContent {
   url: string;
   /** MAC logo drawn above the caption, already loaded. */
   logo?: CanvasImageSource;
+  /**
+   * The collaborating society's logo, already loaded. Drawn beside the MAC
+   * logo with a "×" between them, so it needs `logo` too.
+   */
+  sponsorLogo?: HTMLImageElement;
 }
 
 function wrapWords(
@@ -103,14 +110,15 @@ function truncate(
 }
 
 /**
- * Draws a printable QR poster onto `canvas`: white paper, the MAC logo, the
- * caption above the code, black modules with a quiet zone, and the encoded URL
+ * Draws a printable QR poster onto `canvas`: white paper, the MAC logo (with
+ * the collaborating society's logo and a "×" beside it, when there is one),
+ * the caption above the code, black modules with a quiet zone, and the encoded URL
  * below it. The canvas is 1280 px wide; its height follows the text. Throws if
  * the text does not fit in a QR code.
  */
 export function renderQrImage(
   canvas: HTMLCanvasElement,
-  { caption, url, logo }: QrImageContent,
+  { caption, url, logo, sponsorLogo }: QrImageContent,
   fontFamily: string
 ): void {
   // Error correction Q (25 percent) survives scuffs and projector glare.
@@ -169,7 +177,29 @@ export function renderQrImage(
   let y = MARGIN_PX;
   if (logo) {
     // Above the caption, well clear of the modules and their quiet zone.
-    context.drawImage(logo, centreX - LOGO_PX / 2, y, LOGO_PX, LOGO_PX);
+    const crossPx = sponsorLogo ? CROSS_FONT_PX : 0;
+    const rowPx = sponsorLogo ? LOGO_PX * 2 + LOGO_GAP_PX * 2 + crossPx : LOGO_PX;
+    const rowLeft = centreX - rowPx / 2;
+    context.drawImage(logo, rowLeft, y, LOGO_PX, LOGO_PX);
+    if (sponsorLogo) {
+      context.font = `600 ${CROSS_FONT_PX}px ${fontFamily}`;
+      context.fillText("×", centreX, y + LOGO_PX / 2);
+      // Contained in the same square as MAC's logo, never stretched.
+      const fit = Math.min(
+        LOGO_PX / sponsorLogo.naturalWidth,
+        LOGO_PX / sponsorLogo.naturalHeight
+      );
+      const w = sponsorLogo.naturalWidth * fit;
+      const h = sponsorLogo.naturalHeight * fit;
+      const boxLeft = rowLeft + LOGO_PX + LOGO_GAP_PX * 2 + crossPx;
+      context.drawImage(
+        sponsorLogo,
+        boxLeft + (LOGO_PX - w) / 2,
+        y + (LOGO_PX - h) / 2,
+        w,
+        h
+      );
+    }
     y += LOGO_PX + GAP_PX;
   }
   context.font = captionFont;
