@@ -173,7 +173,7 @@ export function AttendeeApp(): React.JSX.Element {
             <h1 className="line-clamp-2 min-w-0 text-2xl leading-tight font-semibold tracking-tight wrap-break-word sm:text-3xl short:line-clamp-1 short:text-xl">
               {session.name}
             </h1>
-            <StagePill stage={session.stage} showLiveDot={false} className="shrink-0" />
+            <StagePill stage={session.stage} className="shrink-0" />
           </div>
           {countdownCopy && (
             <p

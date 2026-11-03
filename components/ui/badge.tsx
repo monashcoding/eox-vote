@@ -63,33 +63,20 @@ const stageVariants: Record<Stage, NonNullable<BadgeProps["variant"]>> = {
   finished: "success",
 };
 
-/**
- * Stage tag. Open stages (nominating, voting) get the pulsing live dot unless
- * `showLiveDot` is false.
- */
+/** Stage tag, coloured by stage. */
 export function StagePill({
   stage,
-  showLiveDot = true,
   className,
 }: {
   stage: Stage;
-  showLiveDot?: boolean;
   className?: string;
 }): React.JSX.Element {
-  const isOpen =
-    showLiveDot && (stage === Stage.Nominating || stage === Stage.Voting);
   return (
     <Badge
       variant={stageVariants[stage] ?? "outline"}
       tag
       className={cn(stage === Stage.Pending && "px-2 py-0.5 text-[11px]", className)}
     >
-      {isOpen && (
-        <span
-          aria-hidden
-          className="size-1.5 animate-pulse rounded-full bg-live motion-reduce:animate-none"
-        />
-      )}
       {stageLabels[stage] ?? stage}
     </Badge>
   );

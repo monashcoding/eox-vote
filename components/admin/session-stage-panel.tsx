@@ -306,10 +306,6 @@ export function SessionStagePanel({
                 <div>
                   {countdown.status === "running" && (
                     <Badge variant="live" tag>
-                      <span
-                        aria-hidden
-                        className="size-1.5 animate-pulse rounded-full bg-live motion-reduce:animate-none"
-                      />
                       Running
                     </Badge>
                   )}
