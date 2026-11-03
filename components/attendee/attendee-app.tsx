@@ -119,9 +119,16 @@ export function AttendeeApp(): React.JSX.Element {
   if (!session || session.stage === Stage.Pending) {
     return (
       <main className="safe-t safe-b flex min-h-dvh flex-col items-center justify-center overflow-x-clip px-4 text-center sm:px-6">
-        <MacLogo size={64} decorative className="mb-4" />
-        <Eyebrow>Monash Association of Coding</Eyebrow>
-        <h1 className="mt-4 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
+        {/* Brand lockup: logo with the name beside it, text left aligned. */}
+        <div className="flex items-center gap-3">
+          <MacLogo size={48} decorative />
+          <Eyebrow className="text-left text-xs leading-snug sm:text-sm">
+            Monash Association
+            <br />
+            of Coding
+          </Eyebrow>
+        </div>
+        <h1 className="mt-8 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
           <span className="block">EOX</span>{" "}
           <span className="mt-4 block">
             Best{" "}
