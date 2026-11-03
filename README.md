@@ -12,7 +12,7 @@ Each event is a **session**. The host creates one at `/admin`, marks it as the c
 | --- | --- |
 | `pending` | "Waiting for host to start a session" |
 | `nominating` | Nominate form (first name, last name, costume photo) and a browsable list of all nominations. Attendees can edit or delete their own nominations. |
-| `voting` | A swipe deck: swipe right to vote for an entry, left to skip. Tapping the top card shows its photo full size, where it can be swiped the same way, or voted with the Skip and Vote buttons under it; the next entry follows. After the deck they see who they voted for and can add or remove votes. All entries stay browsable, and a photo opened from that list is view only. |
+| `voting` | A swipe deck: swipe right to vote for an entry, left to skip. Tapping the top card shows just its photo, full size, where it can be swiped the same way; the next entry follows. After the deck they see who they voted for and can add or remove votes. All entries stay browsable, and a photo opened from that list is view only. |
 | `results` | Nothing at first. Each time the host presses the reveal button, which names the place it shows ("Reveal 3rd place", "Reveal joint 2nd place"), every attendee sees that place appear (3rd, then 2nd, then 1st). |
 | `finished` | The full podium stays visible. |
 

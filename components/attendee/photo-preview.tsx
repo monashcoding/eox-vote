@@ -13,7 +13,7 @@ import {
 import type { SwipeDirection } from "@/lib/client/swipe-decision";
 import { ErrorNote } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
-import { SwipeButtons, SwipeGlow, SwipeTag } from "./swipe-feedback";
+import { SwipeGlow, SwipeTag } from "./swipe-feedback";
 import { useSwipeGesture } from "./use-swipe-gesture";
 
 export type PreviewPhoto = { url: string; name: string };
@@ -28,14 +28,15 @@ export type PreviewSwipe = {
 };
 
 /**
- * A nominee's photo as large as the screen allows, with the name under it.
- * Closes on the X, a tap anywhere around the photo, or Escape. The parent keeps
- * `photo` set while `open` goes false so the photo stays during the fade out.
+ * A nominee's photo as large as the screen allows, and nothing else: the name
+ * is only read out, as the dialog's title. Closes on the X, a tap anywhere
+ * around the photo, or Escape. The parent keeps `photo` set while `open` goes
+ * false so the photo stays during the fade out.
  *
  * With `swipe` the photo is swiped like the deck's top card (same thresholds,
- * tags and edge glow, lifted over the backdrop), with Skip and Vote under it.
- * Without it the preview is view only. `error` (a vote that did not save) is
- * floated over the top, as the deck's own note is hidden behind the preview.
+ * tags and edge glow, lifted over the backdrop). Without it the preview is
+ * view only. `error` (a vote that did not save) is floated over the top, as
+ * the deck's own note is hidden behind the preview.
  */
 export function PhotoPreview({
   photo,
@@ -69,8 +70,6 @@ export function PhotoPreview({
     handlers,
     style,
     tag,
-    swipe: swipeTo,
-    busy,
     glow,
     consumeDrag,
   } = useSwipeGesture({
@@ -86,9 +85,8 @@ export function PhotoPreview({
         <DialogPopup
           className="safe-t safe-b safe-x inset-0 flex flex-col"
           // The popup fills the screen, so "outside" is any tap that misses
-          // the photo, its name, the X and the buttons. The click that ends a
-          // mouse drag is not a tap; a new press clears a drag that a touch
-          // ended without a click.
+          // the photo and the X. The click that ends a mouse drag is not a
+          // tap; a new press clears a drag that a touch ended without a click.
           onPointerDownCapture={() => void consumeDrag()}
           onClick={(e) => {
             if (consumeDrag()) return;
@@ -116,7 +114,7 @@ export function PhotoPreview({
             </DialogClose>
           </div>
           {photo && (
-            <figure className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 pb-4">
+            <figure className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 pb-4">
               {swipeCard ? (
                 <div
                   key={swipeCard.id}
@@ -144,18 +142,10 @@ export function PhotoPreview({
               ) : (
                 <PreviewImage photo={photo} />
               )}
-              <DialogTitle
-                render={<figcaption />}
-                data-preview-keep
-                className="max-w-full shrink-0 truncate text-center text-base font-semibold text-white"
-              >
+              {/* Read out, not shown: the enlarged view is just the photo. */}
+              <DialogTitle render={<figcaption />} className="sr-only">
                 {photo.name}
               </DialogTitle>
-              {swipeCard && (
-                <div data-preview-keep className="shrink-0">
-                  <SwipeButtons onSwipe={swipeTo} disabled={busy} />
-                </div>
-              )}
             </figure>
           )}
         </DialogPopup>
