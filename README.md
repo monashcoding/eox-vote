@@ -74,6 +74,7 @@ Open a session in the host page and use the QR code panel. The address defaults 
 | `pnpm db:generate` | Generate a new SQL migration in `drizzle/` after editing `lib/db/schema.ts`. |
 | `pnpm db:migrate` | Apply pending migrations to the database in `DATABASE_URL`. |
 | `pnpm db:studio` | Open Drizzle Studio to browse the database. |
+| `pnpm db:seed <session id>` | Add eight sample nominees, MAC's mascots Min and Max in costume with their photos, to a session. Names it already has are skipped. Without an id it lists the sessions and their ids. |
 
 Commits follow Conventional Commits; a husky hook enforces it.
 
