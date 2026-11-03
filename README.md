@@ -97,6 +97,7 @@ Notes:
 - **Instances.** The public state endpoint keeps a 1 second in-process cache, and every change on the same instance clears it immediately. A single instance keeps that cache coherent. Multiple instances behind a load balancer work, because all data is in Postgres, but each instance caches separately, so a change made through one instance can take up to a second to show on the others.
 - **Never rotate `DEVICE_SECRET` during an event.** It signs the device cookies, so a new value gives every device a new identity: earlier votes no longer count as theirs (they can vote again) and attendees can no longer edit their own nominations.
 - **Limit request bodies at the proxy too.** The app rejects uploads over about 5.5 MB, and any upload without a `Content-Length`, before reading them, but a proxy limit stops oversized bodies before they reach Node. With nginx, set `client_max_body_size 6m;`; most proxies' defaults are smaller than a 5 MB photo (nginx's is 1 MB), so set it either way.
+- **Node 24.** `package.json` pins it in `engines.node`, which Nixpacks and Railpack read to choose the build's Node. With Nixpacks (Dokploy's default build type), leave `NIXPACKS_NODE_VERSION` unset: it switches the Node package but not the nixpkgs snapshot the package comes from, so `NIXPACKS_NODE_VERSION=24` with no `engines` fails with `undefined variable 'nodejs_24'`.
 
 ## Data model
 
