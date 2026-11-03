@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Trash2, ExternalLink, Star, StarOff, Users, ThumbsUp } from "lucide-react";
 import { AdminSessionSummaryDto } from "@/lib/api-types";
 import { ApiError } from "@/lib/client/api";
+import { HOST_RETENTION_NOTICE } from "@/lib/retention";
 import { useAdminApi } from "./admin-gate";
 import { StagePill, CurrentBadge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -393,6 +394,7 @@ export function SessionsList({
           })
         )}
       </div>
+      <p className="text-xs text-muted">{HOST_RETENTION_NOTICE}</p>
     </div>
   );
 }

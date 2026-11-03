@@ -6,6 +6,7 @@ import type { AdminNomineeDto, AdminSessionDetailDto } from "@/lib/api-types";
 import { useAdminApi } from "./admin-gate";
 import { errorMessage } from "@/lib/client/error-message";
 import { matchesNameQuery } from "@/lib/client/name-search";
+import { HOST_RETENTION_NOTICE } from "@/lib/retention";
 import { resizeImage } from "@/lib/client/resize-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -341,6 +342,7 @@ export function NomineesPanel({
             </ul>
           </div>
         )}
+        <p className="mt-4 text-xs text-muted">{HOST_RETENTION_NOTICE}</p>
       </CardContent>
       <PhotoPreview
         photo={preview?.photo ?? null}

@@ -19,6 +19,7 @@ import {
 } from "@/lib/client/deck-storage";
 import { errorMessage } from "@/lib/client/error-message";
 import { usePolling } from "@/lib/client/use-polling";
+import { ATTENDEE_RETENTION_NOTICE } from "@/lib/retention";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
@@ -374,6 +375,7 @@ export function VotingView({
         ) : (
           grid
         )}
+        <p className="mt-4 text-xs text-muted">{ATTENDEE_RETENTION_NOTICE}</p>
       </TabsContent>
 
       {/*

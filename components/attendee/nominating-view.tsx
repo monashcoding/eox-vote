@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/client/api";
 import { errorMessage } from "@/lib/client/error-message";
 import { resizeImage } from "@/lib/client/resize-image";
 import { usePolling } from "@/lib/client/use-polling";
+import { ATTENDEE_RETENTION_NOTICE } from "@/lib/retention";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -206,6 +207,7 @@ function NominateForm({
         >
           {submitting ? "Submitting..." : "Submit nomination"}
         </Button>
+        <p className="text-xs text-muted">{ATTENDEE_RETENTION_NOTICE}</p>
       </form>
     </Card>
   );
