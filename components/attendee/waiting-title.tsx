@@ -73,10 +73,11 @@ export function WaitingTitle({
           >
             {eventName}
           </span>
-          {/* Starts at the left edge of "Best" and ends just before Min. */}
+          {/* Starts at the left edge of "Best", left aligned, and ends just
+              before Min. */}
           <span
             ref={nameRef}
-            className="mb-4 block text-balance whitespace-nowrap wrap-break-word"
+            className="mb-4 block text-left text-balance whitespace-nowrap wrap-break-word"
           >
             {eventName}
           </span>
