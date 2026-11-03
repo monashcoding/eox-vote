@@ -94,7 +94,6 @@ export type SwipeGesture = {
    * click that follows can be ignored; reading it clears it.
    */
   consumeDrag: () => boolean;
-  reducedMotion: boolean;
 };
 
 /**
@@ -368,6 +367,5 @@ export function useSwipeGesture<T extends { id: string }>({
     tag,
     glow: { side: glowSide, opacity: glowOpacity, transition: glowTransition },
     consumeDrag,
-    reducedMotion,
   };
 }
