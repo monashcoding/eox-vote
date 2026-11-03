@@ -81,11 +81,14 @@ export function VotingView({
   } | null>(null);
   const [seed] = React.useState(getDeckSeed);
   // The photo stays set while `open` goes false, so it fades out with the preview.
+  // `fromDeck`: opened from the deck's top card, so it can be swiped.
   const [preview, setPreview] = React.useState<{
     photo: PreviewPhoto;
     open: boolean;
+    fromDeck: boolean;
   } | null>(null);
-  const openPreview = (photo: PreviewPhoto) => setPreview({ photo, open: true });
+  const openPreview = (photo: PreviewPhoto, fromDeck = false) =>
+    setPreview({ photo, open: true, fromDeck });
   const [error, setError] = React.useState<string | null>(null);
   const inFlight = React.useRef(0);
   const loaded = React.useRef(false);
@@ -269,6 +272,25 @@ export function VotingView({
   const votedCount = ordered.filter((nominee) => voted.has(nominee.id)).length;
   const deckShown = tab === Tab.Swipe && cards.length > 0;
 
+  /*
+   * Opened from the deck, the preview always shows the deck's top card and
+   * swipes it through handleSwipe, so votes, history and Undo match the deck.
+   * The next card follows; swiping the last one closes the preview on the
+   * summary. Opened anywhere else it stays view only.
+   */
+  const deckPreview = preview?.fromDeck ? (cards[0] ?? null) : null;
+  const previewPhoto = deckPreview
+    ? { url: deckPreview.imageUrl, name: deckPreview.title }
+    : (preview?.photo ?? null);
+  const handlePreviewSwipe = (id: string, direction: SwipeDirection) => {
+    const card = cards.find((c) => c.id === id);
+    if (!card) return;
+    handleSwipe(card, direction);
+    // The last card has flown out: close with no photo, so it is not shown
+    // again while the preview fades out.
+    if (cards.length === 1) setPreview(null);
+  };
+
   const grid = (
     <VoteGrid
       nominees={ordered}
@@ -320,7 +342,7 @@ export function VotingView({
               canUndo={undoable.length > 0}
               returningCard={returningCard}
               onOpenCard={(card) =>
-                openPreview({ url: card.imageUrl, name: card.title })
+                openPreview({ url: card.imageUrl, name: card.title }, true)
               }
               className="min-h-56 flex-1 short:min-h-40"
             />
@@ -403,11 +425,17 @@ export function VotingView({
         </TabsList>
       </div>
       <PhotoPreview
-        photo={preview?.photo ?? null}
+        photo={previewPhoto}
         open={preview?.open ?? false}
         onOpenChange={(open) =>
           setPreview((current) => (current ? { ...current, open } : null))
         }
+        swipe={
+          deckPreview
+            ? { id: deckPreview.id, onSwipe: handlePreviewSwipe }
+            : undefined
+        }
+        error={error}
       />
     </Tabs>
   );
