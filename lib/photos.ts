@@ -18,7 +18,8 @@ export const nameSchema = z
   .transform((value) => value.trim().replace(/\s+/g, " "))
   .pipe(z.string().min(1, NAME_ERROR).max(50, NAME_ERROR));
 
-function detectImageType(bytes: Uint8Array): string | null {
+/** JPEG, PNG or WebP by magic bytes; null for anything else (SVG included). */
+export function detectImageType(bytes: Uint8Array): string | null {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
     return "image/jpeg";
   }

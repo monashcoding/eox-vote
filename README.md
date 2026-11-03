@@ -105,6 +105,8 @@ Postgres, managed by Drizzle migrations in `drizzle/`. Schema: `lib/db/schema.ts
 - `sessions`: name, stage, default timer minutes for nominating and voting (0 means no timer), auto-advance flag, the running timer end time or the paused remaining time, how many results places are revealed, and start and finish times.
 - `nominees`: belongs to a session; first and last name, a hash of the owning device token, and a photo version used to bust the browser cache.
 - `nominee_photos`: the image bytes and content type, one row per nominee (kept apart so browsing `nominees` in a database tool stays light).
+- `sponsors`: societies that run events with MAC, reused across sessions. A full name (unique, ignoring case), an optional short name such as "CISSA", and a logo version used to bust the browser cache.
+- `sponsor_logos`: the logo bytes and content type, one row per sponsor. Logos must be PNG, JPEG or WebP and at most 2 MB; SVG is refused because an SVG served from the app's own origin can run script.
 - `votes`: primary key `(nominee_id, voter_token_hash)`. Vote counts are always derived with `count(*)`, never stored.
 - `app_settings`: a single row holding the admin passcode and the current session.
 

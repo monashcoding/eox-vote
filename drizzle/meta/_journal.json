@@ -15,6 +15,13 @@
       "when": 1793606687519,
       "tag": "0001_seed_app_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793670038250,
+      "tag": "0002_sponsors",
+      "breakpoints": true
     }
   ]
 }

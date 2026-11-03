@@ -9,6 +9,7 @@ import {
   timestamp,
   primaryKey,
   index,
+  uniqueIndex,
   check,
   customType,
 } from "drizzle-orm/pg-core";
@@ -27,6 +28,35 @@ export const sessionStageEnum = pgEnum("session_stage", [
   "results",
   "finished",
 ]);
+
+export const sponsors = pgTable(
+  "sponsors",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    name: text().notNull(),
+    shortName: text("short_name"),
+    logoVersion: integer("logo_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex("sponsors_name_lower_idx").on(sql`lower(${t.name})`)]
+);
+
+/** Kept apart from `sponsors` (like `nominee_photos`) so listing sponsors stays light. */
+export const sponsorLogos = pgTable("sponsor_logos", {
+  sponsorId: uuid("sponsor_id")
+    .primaryKey()
+    .references(() => sponsors.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  data: bytea("data").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const sessions = pgTable(
   "sessions",

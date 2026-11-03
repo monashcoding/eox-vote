@@ -59,6 +59,20 @@ export interface VotesDto {
   votes: string[];
 }
 
+/** A society that runs an event with MAC. */
+export interface SponsorDto {
+  id: string;
+  /** Full name, for example "Computing and Information Systems Students Association". */
+  name: string;
+  /** Short name, for example "CISSA". */
+  shortName: string | null;
+  logoUrl: string;
+}
+
+export interface SponsorsDto {
+  sponsors: SponsorDto[];
+}
+
 export interface AdminSessionSummaryDto {
   id: string;
   name: string;
