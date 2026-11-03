@@ -128,10 +128,14 @@ export function PhotoPreview({
                       (dragX, dragRotate) =>
                         `translate3d(${dragX}px, 0, 0) rotate(${dragRotate}deg)`
                     ),
-                    touchAction: "pan-y",
+                    // Nothing scrolls behind the full-screen preview, so every
+                    // drag is a swipe. With pan-y (as on the deck, where the
+                    // page can scroll), one that starts a little downward goes
+                    // to the browser and is cancelled.
+                    touchAction: "none",
                     willChange: "transform, opacity",
                   }}
-                  className="relative flex min-h-0 max-w-full cursor-grab touch-pan-y select-none active:cursor-grabbing"
+                  className="relative flex min-h-0 max-w-full cursor-grab select-none active:cursor-grabbing"
                 >
                   {/* The surface takes the pointer, as the deck's cards do. */}
                   <PreviewImage photo={photo} className="pointer-events-none" />
