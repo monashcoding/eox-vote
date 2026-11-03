@@ -119,27 +119,23 @@ export function AttendeeApp(): React.JSX.Element {
   if (!session || session.stage === Stage.Pending) {
     return (
       <main className="safe-t safe-b flex min-h-dvh flex-col items-center justify-center overflow-x-clip px-4 text-center sm:px-6">
-        {/* Brand lockup: logo with the name beside it, text left aligned. */}
+        {/*
+          The name beside the logo is stacked over three lines so the logo row
+          stays narrow: Min, who peeks up on the right over "Dressed", then
+          fits beside it, and the title can sit right under the logo with or
+          without an event name.
+        */}
         <div className="flex items-center gap-3">
           <MacLogo size={48} decorative />
           <Eyebrow className="text-left text-xs leading-snug sm:text-sm">
-            Monash Association
+            Monash
+            <br />
+            Association
             <br />
             of Coding
           </Eyebrow>
         </div>
-        {/*
-          With a pending event, its name is the first title line and Min
-          overlaps that line, so the title can sit close to the logo. Without
-          one, the top margin (in em, so it scales with the text) keeps Min, who
-          rises about 1.45em above "Dressed", clear of the logo.
-        */}
-        <h1
-          className={cn(
-            "text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight",
-            session ? "mt-6" : "mt-[1.6em]"
-          )}
-        >
+        <h1 className="mt-6 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
           {session && (
             <span className="mb-4 block text-balance wrap-break-word">
               {session.name}
