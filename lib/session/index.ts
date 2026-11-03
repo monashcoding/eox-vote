@@ -4,6 +4,7 @@ import {
   AdminSessionDetailDto,
   AdminSessionSummaryDto,
   ControlRequest,
+  SponsorDto,
   Stage,
   TimerDto,
 } from "../api-types";
@@ -16,9 +17,10 @@ import {
 import { buildPodium, clampRevealed } from "./ranking";
 import { invalidatePublicState } from "./public-state";
 import { db, type DbReader, type DbTransaction } from "../db";
-import { appSettings, nominees, sessions, votes } from "../db/schema";
+import { appSettings, nominees, sessions, sponsors, votes } from "../db/schema";
 import { HttpError, requireUuid } from "../http";
 import { listAdminNominees } from "../nominees";
+import { getSponsorDto, lockSponsorInTx, toSponsorDto } from "../sponsors";
 
 export function toTimerDto(
   timerEndsAt: Date | null,
@@ -34,7 +36,8 @@ export function toAdminSessionSummaryDto(
   session: typeof sessions.$inferSelect,
   currentSessionId: string | null,
   nomineeCount: number,
-  voteCount: number
+  voteCount: number,
+  sponsor: SponsorDto | null
 ): AdminSessionSummaryDto {
   return {
     id: session.id,
@@ -46,13 +49,15 @@ export function toAdminSessionSummaryDto(
     createdAt: session.createdAt.getTime(),
     startedAt: session.startedAt ? session.startedAt.getTime() : null,
     finishedAt: session.finishedAt ? session.finishedAt.getTime() : null,
+    sponsor,
   };
 }
 
 export function toAdminSessionDetailDto(
   session: typeof sessions.$inferSelect,
   currentSessionId: string | null,
-  adminNominees: AdminNomineeDto[]
+  adminNominees: AdminNomineeDto[],
+  sponsor: SponsorDto | null
 ): AdminSessionDetailDto {
   const podium = buildPodium(adminNominees);
   return {
@@ -64,6 +69,7 @@ export function toAdminSessionDetailDto(
     votingMinutes: session.votingMinutes,
     autoAdvance: session.autoAdvance,
     timer: toTimerDto(session.timerEndsAt, session.timerRemainingMs),
+    sponsor,
     createdAt: session.createdAt.getTime(),
     startedAt: session.startedAt ? session.startedAt.getTime() : null,
     finishedAt: session.finishedAt ? session.finishedAt.getTime() : null,
@@ -128,13 +134,15 @@ export async function listAdminSessions(): Promise<{
   const rows = await db
     .select({
       session: sessions,
+      sponsor: sponsors,
       nomineeCount: sql<number>`count(distinct ${nominees.id})::int`,
       voteCount: sql<number>`count(${votes.nomineeId})::int`,
     })
     .from(sessions)
+    .leftJoin(sponsors, eq(sponsors.id, sessions.sponsorId))
     .leftJoin(nominees, eq(nominees.sessionId, sessions.id))
     .leftJoin(votes, eq(votes.nomineeId, nominees.id))
-    .groupBy(sessions.id)
+    .groupBy(sessions.id, sponsors.id)
     .orderBy(sql`${sessions.createdAt} desc`);
 
   const summaryList = rows.map((r) =>
@@ -142,7 +150,8 @@ export async function listAdminSessions(): Promise<{
       r.session,
       currentSessionId,
       r.nomineeCount,
-      r.voteCount
+      r.voteCount,
+      r.sponsor ? toSponsorDto(r.sponsor) : null
     )
   );
 
@@ -219,7 +228,8 @@ export async function applyAdminSessionControl(
       return toAdminSessionDetailDto(
         current,
         currentSessionId,
-        await listAdminNominees(current.id, tx)
+        await listAdminNominees(current.id, tx),
+        await getSponsorDto(current.sponsorId, tx)
       );
     }
 
@@ -248,7 +258,8 @@ export async function applyAdminSessionControl(
     return toAdminSessionDetailDto(
       updated,
       currentSessionId,
-      await listAdminNominees(updated.id, tx)
+      await listAdminNominees(updated.id, tx),
+      await getSponsorDto(updated.sponsorId, tx)
     );
   });
   // After commit, so a rebuild cannot cache the pre-control row under the new generation.
@@ -264,7 +275,8 @@ export async function getAdminSessionDetail(
     return toAdminSessionDetailDto(
       session,
       await getCurrentSessionId(tx),
-      await listAdminNominees(session.id, tx)
+      await listAdminNominees(session.id, tx),
+      await getSponsorDto(session.sponsorId, tx)
     );
   });
 }
@@ -274,6 +286,8 @@ export interface CreateSessionInput {
   nominatingMinutes?: number;
   votingMinutes?: number;
   autoAdvance?: boolean;
+  /** Unknown ids are a 404. */
+  sponsorId?: string | null;
 }
 
 export async function createAdminSession(
@@ -284,19 +298,25 @@ export async function createAdminSession(
     throw new HttpError(400, "Name must be between 1 and 80 characters");
   }
 
-  const [inserted] = await db
-    .insert(sessions)
-    .values({
-      name,
-      nominatingMinutes: input.nominatingMinutes ?? 30,
-      votingMinutes: input.votingMinutes ?? 45,
-      autoAdvance: input.autoAdvance ?? false,
-    })
-    .returning();
+  const sponsorId = input.sponsorId ?? null;
+  const { inserted, sponsor } = await db.transaction(async (tx) => {
+    if (sponsorId !== null) await lockSponsorInTx(tx, sponsorId);
+    const [row] = await tx
+      .insert(sessions)
+      .values({
+        name,
+        nominatingMinutes: input.nominatingMinutes ?? 30,
+        votingMinutes: input.votingMinutes ?? 45,
+        autoAdvance: input.autoAdvance ?? false,
+        sponsorId,
+      })
+      .returning();
+    return { inserted: row, sponsor: await getSponsorDto(sponsorId, tx) };
+  });
 
   invalidatePublicState();
   const currentSessionId = await getCurrentSessionId();
-  return toAdminSessionDetailDto(inserted, currentSessionId, []);
+  return toAdminSessionDetailDto(inserted, currentSessionId, [], sponsor);
 }
 
 export interface UpdateSessionInput {
@@ -304,6 +324,8 @@ export interface UpdateSessionInput {
   nominatingMinutes?: number;
   votingMinutes?: number;
   autoAdvance?: boolean;
+  /** `null` clears the sponsor; unknown ids are a 404. */
+  sponsorId?: string | null;
 }
 
 export async function updateAdminSession(
@@ -340,22 +362,30 @@ export async function updateAdminSession(
     updates.autoAdvance = input.autoAdvance;
   }
 
-  const [updated] = await db
-    .update(sessions)
-    .set(updates)
-    .where(eq(sessions.id, id))
-    .returning();
-
-  if (!updated) {
-    throw new HttpError(404, "Session not found");
+  if (input.sponsorId !== undefined) {
+    updates.sponsorId = input.sponsorId;
   }
+
+  const { updated, sponsor } = await db.transaction(async (tx) => {
+    if (input.sponsorId) await lockSponsorInTx(tx, input.sponsorId);
+    const [row] = await tx
+      .update(sessions)
+      .set(updates)
+      .where(eq(sessions.id, id))
+      .returning();
+    if (!row) {
+      throw new HttpError(404, "Session not found");
+    }
+    return { updated: row, sponsor: await getSponsorDto(row.sponsorId, tx) };
+  });
 
   invalidatePublicState();
   const currentSessionId = await getCurrentSessionId();
   return toAdminSessionDetailDto(
     updated,
     currentSessionId,
-    await listAdminNominees(updated.id)
+    await listAdminNominees(updated.id),
+    sponsor
   );
 }
 

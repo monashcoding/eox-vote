@@ -83,6 +83,8 @@ export interface AdminSessionSummaryDto {
   createdAt: number;
   startedAt: number | null;
   finishedAt: number | null;
+  /** The society running this session with MAC, if any. */
+  sponsor: SponsorDto | null;
 }
 
 export interface AdminNomineeDto extends PublicNomineeDto {
@@ -100,6 +102,8 @@ export interface AdminSessionDetailDto {
   votingMinutes: number;
   autoAdvance: boolean;
   timer: TimerDto;
+  /** The society running this session with MAC, if any. */
+  sponsor: SponsorDto | null;
   createdAt: number;
   startedAt: number | null;
   finishedAt: number | null;

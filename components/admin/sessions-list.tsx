@@ -7,6 +7,7 @@ import { AdminSessionSummaryDto } from "@/lib/api-types";
 import { ApiError } from "@/lib/client/api";
 import { HOST_RETENTION_NOTICE } from "@/lib/retention";
 import { useAdminApi } from "./admin-gate";
+import { SponsorField } from "./sponsor-field";
 import { StagePill, CurrentBadge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Eyebrow, Label } from "@/components/ui/label";
+import { SponsorLogo } from "@/components/ui/sponsor-logo";
 
 interface SessionsListProps {
   initialSessions?: AdminSessionSummaryDto[];
@@ -36,6 +38,7 @@ export function SessionsList({
   const [nominatingMinutes, setNominatingMinutes] = React.useState(30);
   const [votingMinutes, setVotingMinutes] = React.useState(45);
   const [autoAdvance, setAutoAdvance] = React.useState(false);
+  const [sponsorId, setSponsorId] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [createError, setCreateError] = React.useState<string | null>(null);
 
@@ -101,12 +104,14 @@ export function SessionsList({
           nominatingMinutes,
           votingMinutes,
           autoAdvance,
+          sponsorId,
         }),
       });
       setName("");
       setNominatingMinutes(30);
       setVotingMinutes(45);
       setAutoAdvance(false);
+      setSponsorId(null);
       setShowCreate(false);
       await fetchSessions();
     } catch (err: unknown) {
@@ -234,6 +239,12 @@ export function SessionsList({
                 </div>
               </div>
 
+              <SponsorField
+                value={sponsorId}
+                onChange={setSponsorId}
+                disabled={creating}
+              />
+
               <label
                 htmlFor="auto-advance"
                 className="flex min-h-11 cursor-pointer items-center gap-3 text-base text-foreground compact:min-h-0 compact:text-sm"
@@ -322,6 +333,14 @@ export function SessionsList({
                         <ThumbsUp className="size-3.5" />
                         {s.voteCount} {s.voteCount === 1 ? "vote" : "votes"}
                       </span>
+                      {s.sponsor && (
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <SponsorLogo src={s.sponsor.logoUrl} size={14} alt="" />
+                          <span className="truncate">
+                            With {s.sponsor.shortName ?? s.sponsor.name}
+                          </span>
+                        </span>
+                      )}
                       <span>
                         Created {new Date(s.createdAt).toLocaleDateString("en-AU")}
                       </span>

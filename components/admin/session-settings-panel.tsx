@@ -6,6 +6,7 @@ import { Check, Trash2 } from "lucide-react";
 import { AdminSessionDetailDto } from "@/lib/api-types";
 import { ApiError } from "@/lib/client/api";
 import { useAdminApi } from "./admin-gate";
+import { SponsorField } from "./sponsor-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorNote } from "@/components/ui/empty-state";
@@ -17,10 +18,13 @@ interface SessionSettingsPanelProps {
   onRefresh: () => Promise<void>;
 }
 
-type SettingsFields = Pick<
-  AdminSessionDetailDto,
-  "name" | "nominatingMinutes" | "votingMinutes" | "autoAdvance"
->;
+interface SettingsFields
+  extends Pick<
+    AdminSessionDetailDto,
+    "name" | "nominatingMinutes" | "votingMinutes" | "autoAdvance"
+  > {
+  sponsorId: string | null;
+}
 
 /** Draft fields that differ from the saved session; trims the name first. */
 function changedFields(
@@ -48,6 +52,12 @@ function changedFields(
   ) {
     changes.autoAdvance = draft.autoAdvance;
   }
+  if (
+    draft.sponsorId !== undefined &&
+    draft.sponsorId !== (session.sponsor?.id ?? null)
+  ) {
+    changes.sponsorId = draft.sponsorId;
+  }
   return changes;
 }
 
@@ -67,6 +77,8 @@ export function SessionSettingsPanel({
     draft.nominatingMinutes ?? session.nominatingMinutes;
   const votingMinutes = draft.votingMinutes ?? session.votingMinutes;
   const autoAdvance = draft.autoAdvance ?? session.autoAdvance;
+  const sponsorId =
+    draft.sponsorId !== undefined ? draft.sponsorId : (session.sponsor?.id ?? null);
   const editField = <K extends keyof SettingsFields>(
     key: K,
     value: SettingsFields[K]
@@ -189,6 +201,13 @@ export function SessionSettingsPanel({
                 </p>
               </div>
             </div>
+
+            <SponsorField
+              value={sponsorId}
+              onChange={(next) => editField("sponsorId", next)}
+              current={session.sponsor}
+              disabled={saving}
+            />
 
             <label
               htmlFor="edit-auto-advance"

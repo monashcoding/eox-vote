@@ -72,6 +72,9 @@ export const sessions = pgTable(
     revealedCount: integer("revealed_count").notNull().default(0),
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
+    sponsorId: uuid("sponsor_id").references(() => sponsors.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

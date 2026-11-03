@@ -1,9 +1,9 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { SponsorDto } from "./api-types";
 import { readBodyWithLimit } from "./body-limit";
-import { db } from "./db";
+import { db, type DbReader, type DbTransaction } from "./db";
 import { sponsorLogos, sponsors } from "./db/schema";
-import { HttpError } from "./http";
+import { HttpError, requireUuid } from "./http";
 import { detectImageType } from "./photos";
 import { invalidatePublicState } from "./session/public-state";
 import {
@@ -17,6 +17,7 @@ export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 /** Whole multipart body: the logo plus room for the names and part headers. */
 const MAX_SPONSOR_FORM_BYTES = MAX_LOGO_BYTES + 64 * 1024;
 const LOGO_TOO_BIG = "Logo must be 2 MB or smaller";
+const SPONSOR_NOT_FOUND = "Sponsor not found";
 
 type SponsorRow = typeof sponsors.$inferSelect;
 
@@ -35,6 +36,38 @@ export async function listSponsors(): Promise<SponsorDto[]> {
     .from(sponsors)
     .orderBy(sql`lower(${sponsors.name})`, sponsors.name);
   return rows.map(toSponsorDto);
+}
+
+export async function getSponsorDto(
+  sponsorId: string | null,
+  executor: DbReader = db
+): Promise<SponsorDto | null> {
+  if (sponsorId === null) return null;
+  const [row] = await executor
+    .select()
+    .from(sponsors)
+    .where(eq(sponsors.id, sponsorId))
+    .limit(1);
+  return row ? toSponsorDto(row) : null;
+}
+
+/**
+ * 404 unless the sponsor exists. The share lock makes a concurrent delete
+ * wait, so a session pointing at it cannot hit a missing foreign key.
+ */
+export async function lockSponsorInTx(
+  tx: DbTransaction,
+  sponsorId: string
+): Promise<void> {
+  requireUuid(sponsorId, SPONSOR_NOT_FOUND);
+  const [row] = await tx
+    .select({ id: sponsors.id })
+    .from(sponsors)
+    .where(eq(sponsors.id, sponsorId))
+    .for("share");
+  if (!row) {
+    throw new HttpError(404, SPONSOR_NOT_FOUND);
+  }
 }
 
 interface SponsorForm {

@@ -13,6 +13,7 @@ const createSessionSchema = z.object({
   nominatingMinutes: z.number().int().min(0).max(600).optional(),
   votingMinutes: z.number().int().min(0).max(600).optional(),
   autoAdvance: z.boolean().optional(),
+  sponsorId: z.string().nullable().optional(),
 });
 
 export const GET = handleRoute(async () => {
