@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorNote } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import {
+  PhotoPreview,
+  type PreviewPhoto,
+} from "@/components/attendee/photo-preview";
 
 interface NomineesPanelProps {
   session: AdminSessionDetailDto;
@@ -22,12 +26,14 @@ function NomineeRow({
   showVotes,
   hidden,
   onRefresh,
+  onOpenPhoto,
 }: {
   nominee: AdminNomineeDto;
   showVotes: boolean;
   /** Filtered out by the search. Hidden rather than unmounted so an open edit survives. */
   hidden: boolean;
   onRefresh: () => Promise<void>;
+  onOpenPhoto: (photo: PreviewPhoto) => void;
 }): React.JSX.Element {
   const adminApi = useAdminApi();
   const [editing, setEditing] = React.useState(false);
@@ -97,11 +103,23 @@ function NomineeRow({
       hidden={hidden}
       className="flex items-start gap-3 rounded-panel border-2 border-border bg-surface-soft p-3"
     >
-      <img
-        src={nominee.photoUrl}
-        alt={`${nominee.firstName} ${nominee.lastName}`}
-        className="size-14 shrink-0 rounded-full object-cover"
-      />
+      <button
+        type="button"
+        aria-label={`See photo of ${nominee.firstName} ${nominee.lastName} larger`}
+        onClick={() =>
+          onOpenPhoto({
+            url: nominee.photoUrl,
+            name: `${nominee.firstName} ${nominee.lastName}`,
+          })
+        }
+        className="shrink-0 cursor-zoom-in rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-soft"
+      >
+        <img
+          src={nominee.photoUrl}
+          alt=""
+          className="size-14 rounded-full object-cover"
+        />
+      </button>
 
       <div className="flex min-h-14 min-w-0 flex-1 flex-wrap content-center items-center gap-x-3 gap-y-2">
         {editing ? (
@@ -241,6 +259,11 @@ export function NomineesPanel({
 }: NomineesPanelProps): React.JSX.Element {
   const [showVotes, setShowVotes] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  // The photo stays set while `open` goes false, so it fades out with the preview.
+  const [preview, setPreview] = React.useState<{
+    photo: PreviewPhoto;
+    open: boolean;
+  } | null>(null);
   const nominees = session.nominees;
   const matchingIds = new Set(
     nominees
@@ -312,12 +335,20 @@ export function NomineesPanel({
                   showVotes={showVotes}
                   hidden={!matchingIds.has(nominee.id)}
                   onRefresh={onRefresh}
+                  onOpenPhoto={(photo) => setPreview({ photo, open: true })}
                 />
               ))}
             </ul>
           </div>
         )}
       </CardContent>
+      <PhotoPreview
+        photo={preview?.photo ?? null}
+        open={preview?.open ?? false}
+        onOpenChange={(open) =>
+          setPreview((current) => (current ? { ...current, open } : null))
+        }
+      />
     </Card>
   );
 }
