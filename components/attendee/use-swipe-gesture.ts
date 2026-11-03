@@ -118,7 +118,8 @@ export function useSwipeGesture<T extends { id: string }>({
   const reducedMotion = usePrefersReducedMotion();
 
   const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
+  // The card a drag in progress started on, or null when not dragging.
+  const [dragCardId, setDragCardId] = useState<string | null>(null);
   const [flight, setFlight] = useState<FlightState<T> | null>(null);
   // Distance at which the glow reaches full strength: the swipe threshold.
   const [dragThreshold, setDragThreshold] = useState(swipeDistanceThreshold(0));
@@ -134,13 +135,26 @@ export function useSwipeGesture<T extends { id: string }>({
   // anything (a mouse drag ending over the backdrop, for one).
   const draggedRef = useRef(false);
 
+  /*
+   * A drag belongs to the card it started on. When that card stops being the
+   * current one (a failed vote put another on top) or the gesture is switched
+   * off (the preview closed), the drag ends here: the next card never takes
+   * it over on release, and a drag whose pointerup never arrived does not
+   * come back the next time the card shows.
+   */
+  if (dragCardId !== null && (dragCardId !== card?.id || disabled)) {
+    setDragCardId(null);
+    setDragOffset(0);
+  }
+  const isDragging = dragCardId !== null;
+
   const activeFlight = flight && card && flight.id === card.id ? flight : null;
 
   const startFlyOut = useCallback(
     (target: T, direction: SwipeDirection) => {
       if (disabled) return;
       setDragOffset(0);
-      setIsDragging(false);
+      setDragCardId(null);
       setFlight({ id: target.id, card: target, direction });
     },
     [disabled],
@@ -186,17 +200,17 @@ export function useSwipeGesture<T extends { id: string }>({
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (disabled || flight !== null || e.button !== 0) return;
+      if (disabled || flight !== null || !card || e.button !== 0) return;
       tapRef.current = false;
       draggedRef.current = false;
       e.currentTarget.setPointerCapture(e.pointerId);
       pointerIdRef.current = e.pointerId;
       dragOriginRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
-      setIsDragging(true);
+      setDragCardId(card.id);
       setDragThreshold(swipeDistanceThreshold(ref.current?.offsetWidth ?? 0));
       setDragOffset(0);
     },
-    [disabled, flight],
+    [disabled, flight, card],
   );
 
   const onPointerMove = useCallback(
@@ -214,7 +228,7 @@ export function useSwipeGesture<T extends { id: string }>({
         e.currentTarget.releasePointerCapture(e.pointerId);
       }
       pointerIdRef.current = null;
-      setIsDragging(false);
+      setDragCardId(null);
 
       if (disabled || flight !== null) {
         setDragOffset(0);
@@ -252,7 +266,7 @@ export function useSwipeGesture<T extends { id: string }>({
       }
       pointerIdRef.current = null;
       tapRef.current = false;
-      setIsDragging(false);
+      setDragCardId(null);
       setDragOffset(0);
     },
     [],
