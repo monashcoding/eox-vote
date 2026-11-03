@@ -14,6 +14,7 @@ import { Eyebrow } from "@/components/ui/label";
 import { MacLogo } from "@/components/ui/mac-logo";
 import { NominatingView } from "./nominating-view";
 import { ResultsView } from "./results-view";
+import { WaitingTitle } from "./waiting-title";
 import { VotingView } from "./voting-view";
 
 export function StageBody({
@@ -135,28 +136,7 @@ export function AttendeeApp(): React.JSX.Element {
             of Coding
           </Eyebrow>
         </div>
-        <h1 className="mt-6 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
-          {session && (
-            <span className="mb-4 block text-balance wrap-break-word">
-              {session.name}
-            </span>
-          )}
-          Best{" "}
-          <span className="relative isolate inline-block">
-            {/* Min peeks over the top edge of the highlight from behind it. */}
-            <img
-              src="/mascots/min-artist.svg"
-              alt=""
-              aria-hidden="true"
-              draggable={false}
-              className="pointer-events-none absolute -right-[0.15em] bottom-[calc(100%_-_0.25em)] -z-10 w-[1.55em] max-w-none rotate-15 select-none"
-            />
-            {/* A ring in the page colour outlines the box where it covers Min. */}
-            <span className="inline-block rounded-tag bg-primary px-2 py-0.5 text-primary-foreground ring-4 ring-background">
-              Dressed
-            </span>
-          </span>
-        </h1>
+        <WaitingTitle eventName={session?.name ?? null} />
         <p className="mt-6 text-base text-muted compact:text-sm">
           Waiting for host to start a session
         </p>
