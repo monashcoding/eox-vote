@@ -43,22 +43,6 @@ export function CollabLogos({
 }
 
 /**
- * "MAC × CISSA": MAC's short name with the partner's short name, or its full
- * name when it has none.
- */
-export function CollabShortName({
-  sponsor,
-}: {
-  sponsor: PublicSponsorDto;
-}): React.JSX.Element {
-  return (
-    <>
-      MAC <Cross /> {sponsor.shortName ?? sponsor.name}
-    </>
-  );
-}
-
-/**
  * "MAC (logo) × (logo) CISSA": each society's name on the outside of its
  * logo, with the one "×" between the logos. The partner's short name is used,
  * or its full name when it has none; `nameClassName` lets a caller clamp or

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 import { MacLogo } from "@/components/ui/mac-logo";
-import { CollabLogos, CollabMark, CollabShortName } from "./collab-mark";
+import { CollabMark } from "./collab-mark";
 import { NominatingView } from "./nominating-view";
 import { ResultsView } from "./results-view";
 import { WaitingTitle } from "./waiting-title";
@@ -176,17 +176,13 @@ export function AttendeeApp(): React.JSX.Element {
           {session.sponsor ? (
             // Same 24 px row as without a partner, so the deck keeps its room;
             // a partner with no short name is cut off with an ellipsis.
-            <div className="flex max-w-full items-center gap-2 short:hidden">
-              <CollabLogos
-                sponsor={session.sponsor}
-                size={24}
-                named
-                className="shrink-0 gap-1.5 text-xs"
-              />
-              <Eyebrow className="min-w-0 truncate text-left">
-                <CollabShortName sponsor={session.sponsor} />
-              </Eyebrow>
-            </div>
+            <CollabMark
+              sponsor={session.sponsor}
+              size={24}
+              className="max-w-full gap-2 short:hidden"
+              crossClassName="text-xs"
+              nameClassName="truncate"
+            />
           ) : (
             <div className="flex items-center gap-2 short:hidden">
               <MacLogo size={24} decorative />
