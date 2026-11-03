@@ -122,7 +122,7 @@ export function AttendeeApp(): React.JSX.Element {
         <MacLogo size={64} decorative className="mb-4" />
         <Eyebrow>Monash Association of Coding</Eyebrow>
         <h1 className="mt-4 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
-          <span className="block">EOX 2026</span>{" "}
+          <span className="block">EOX</span>{" "}
           <span className="mt-4 block">
             Best{" "}
             <span className="relative isolate inline-block">

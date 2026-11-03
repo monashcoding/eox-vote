@@ -35,7 +35,7 @@ export function AdminShell({
           <div className="flex min-w-0 items-center gap-3">
             <MacLogo size={40} />
             <div className="flex min-w-0 flex-col leading-tight">
-              <Eyebrow>EOX 2026 Best Dressed</Eyebrow>
+              <Eyebrow>EOX Best Dressed</Eyebrow>
               <h1 className="truncate text-base font-semibold text-foreground">
                 Host console
               </h1>
