@@ -159,15 +159,21 @@ export function useSwipeGesture<T extends { id: string }>({
     [onSwipe],
   );
 
-  /* Fallback timer if transitionend does not fire */
+  /*
+   * Fallback if transitionend does not fire. It follows the stored flight, not
+   * activeFlight: a flight whose card stopped being the current one (a failed
+   * vote put another card on top mid-flight) still lands, once, here. Left in
+   * state, it would land on its own later, whenever that card next came back
+   * on top.
+   */
   useEffect(() => {
-    if (!activeFlight) return;
+    if (!flight) return;
     const duration = reducedMotion
       ? REDUCED_FADE_MS + 50
       : FLY_DURATION_MS + 50;
-    const timer = setTimeout(() => finishFlight(activeFlight), duration);
+    const timer = setTimeout(() => finishFlight(flight), duration);
     return () => clearTimeout(timer);
-  }, [activeFlight, reducedMotion, finishFlight]);
+  }, [flight, reducedMotion, finishFlight]);
 
   const onTransitionEnd = useCallback(
     (e: React.TransitionEvent<HTMLDivElement>) => {
@@ -180,7 +186,7 @@ export function useSwipeGesture<T extends { id: string }>({
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (disabled || activeFlight !== null || e.button !== 0) return;
+      if (disabled || flight !== null || e.button !== 0) return;
       tapRef.current = false;
       draggedRef.current = false;
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -190,7 +196,7 @@ export function useSwipeGesture<T extends { id: string }>({
       setDragThreshold(swipeDistanceThreshold(ref.current?.offsetWidth ?? 0));
       setDragOffset(0);
     },
-    [disabled, activeFlight],
+    [disabled, flight],
   );
 
   const onPointerMove = useCallback(
@@ -210,7 +216,7 @@ export function useSwipeGesture<T extends { id: string }>({
       pointerIdRef.current = null;
       setIsDragging(false);
 
-      if (disabled || activeFlight !== null) {
+      if (disabled || flight !== null) {
         setDragOffset(0);
         return;
       }
@@ -235,7 +241,7 @@ export function useSwipeGesture<T extends { id: string }>({
         setDragOffset(0);
       }
     },
-    [disabled, isDragging, activeFlight, card, startFlyOut, onTap],
+    [disabled, isDragging, flight, card, startFlyOut, onTap],
   );
 
   const onPointerCancel = useCallback(
@@ -255,17 +261,17 @@ export function useSwipeGesture<T extends { id: string }>({
   const onClick = useCallback(() => {
     if (!tapRef.current) return;
     tapRef.current = false;
-    if (onTap && card && !disabled && activeFlight === null) {
+    if (onTap && card && !disabled && flight === null) {
       onTap(card);
     }
-  }, [onTap, card, disabled, activeFlight]);
+  }, [onTap, card, disabled, flight]);
 
   const swipe = useCallback(
     (direction: SwipeDirection) => {
-      if (disabled || activeFlight !== null || !card) return;
+      if (disabled || flight !== null || !card) return;
       startFlyOut(card, direction);
     },
-    [disabled, activeFlight, card, startFlyOut],
+    [disabled, flight, card, startFlyOut],
   );
 
   const consumeDrag = useCallback(() => {
@@ -341,7 +347,7 @@ export function useSwipeGesture<T extends { id: string }>({
       onTransitionEnd,
     },
     swipe,
-    busy: disabled || activeFlight !== null,
+    busy: disabled || flight !== null,
     isDragging,
     progress: activeFlight !== null ? 1 : dragProgress,
     style,
