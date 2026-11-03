@@ -41,6 +41,8 @@ export interface PublicSessionDto {
   nominees: PublicNomineeDto[];
   /** Results and finished only, otherwise null. */
   results: PublicResultsDto | null;
+  /** The society running this session with MAC, shown beside MAC's logo. */
+  sponsor: PublicSponsorDto | null;
 }
 
 export interface PublicStateDto {
@@ -59,14 +61,17 @@ export interface VotesDto {
   votes: string[];
 }
 
-/** A society that runs an event with MAC. */
-export interface SponsorDto {
-  id: string;
+/** A society that runs an event with MAC, as attendees see it. */
+export interface PublicSponsorDto {
   /** Full name, for example "Computing and Information Systems Students Association". */
   name: string;
   /** Short name, for example "CISSA". */
   shortName: string | null;
   logoUrl: string;
+}
+
+export interface SponsorDto extends PublicSponsorDto {
+  id: string;
 }
 
 export interface SponsorsDto {

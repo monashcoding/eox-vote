@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 import { MacLogo } from "@/components/ui/mac-logo";
+import { CollabLogos, CollabShortName } from "./collab-mark";
 import { NominatingView } from "./nominating-view";
 import { ResultsView } from "./results-view";
 import { WaitingTitle } from "./waiting-title";
@@ -124,18 +125,33 @@ export function AttendeeApp(): React.JSX.Element {
           The name beside the logo is stacked over three lines so the logo row
           stays narrow: Min, who peeks up on the right over "Dressed", then
           fits beside it, and the title can sit right under the logo with or
-          without an event name.
+          without an event name. With a partner society the two logos sit
+          side by side and the short names go under them, for the same reason.
         */}
-        <div className="flex items-center gap-3">
-          <MacLogo size={48} decorative />
-          <Eyebrow className="text-left text-xs leading-snug sm:text-sm">
-            Monash
-            <br />
-            Association
-            <br />
-            of Coding
-          </Eyebrow>
-        </div>
+        {session?.sponsor ? (
+          <div className="flex flex-col items-center gap-2">
+            <CollabLogos
+              sponsor={session.sponsor}
+              size={48}
+              named
+              className="gap-2.5 text-lg"
+            />
+            <Eyebrow className="line-clamp-2 max-w-[12rem] text-xs leading-snug text-balance sm:text-sm">
+              <CollabShortName sponsor={session.sponsor} />
+            </Eyebrow>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <MacLogo size={48} decorative />
+            <Eyebrow className="text-left text-xs leading-snug sm:text-sm">
+              Monash
+              <br />
+              Association
+              <br />
+              of Coding
+            </Eyebrow>
+          </div>
+        )}
         <WaitingTitle eventName={session?.name ?? null} />
         <p className="mt-6 text-base text-muted compact:text-sm">
           Waiting for host to start a session
@@ -159,10 +175,26 @@ export function AttendeeApp(): React.JSX.Element {
       {/* Above the section (which has its own stacking context) so the offline note can overhang it. */}
       <header className="relative z-10 border-b-2 border-border bg-card/95 px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5 short:py-2">
         <div className="mx-auto flex max-w-xl flex-col items-center space-y-2 text-center short:space-y-0.5">
-          <div className="flex items-center gap-2 short:hidden">
-            <MacLogo size={24} decorative />
-            <Eyebrow>Monash Association of Coding</Eyebrow>
-          </div>
+          {session.sponsor ? (
+            // Same 24 px row as without a partner, so the deck keeps its room;
+            // a partner with no short name is cut off with an ellipsis.
+            <div className="flex max-w-full items-center gap-2 short:hidden">
+              <CollabLogos
+                sponsor={session.sponsor}
+                size={24}
+                named
+                className="shrink-0 gap-1.5 text-xs"
+              />
+              <Eyebrow className="min-w-0 truncate text-left">
+                <CollabShortName sponsor={session.sponsor} />
+              </Eyebrow>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 short:hidden">
+              <MacLogo size={24} decorative />
+              <Eyebrow>Monash Association of Coding</Eyebrow>
+            </div>
+          )}
           {/* The pill stays beside the title and long names are clamped, so
               the voting deck keeps its room on small screens. */}
           <div className="flex max-w-full items-center justify-center gap-3">

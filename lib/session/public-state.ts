@@ -2,6 +2,7 @@ import {
   PublicNomineeDto,
   PublicResultsDto,
   PublicSessionDto,
+  PublicSponsorDto,
   PublicStateDto,
   Stage,
 } from "../api-types";
@@ -9,13 +10,15 @@ import { db } from "../db";
 import { sessions } from "../db/schema";
 import { HttpError } from "../http";
 import { listAdminNominees, listPublicNominees } from "../nominees";
+import { getSponsorDto } from "../sponsors";
 import { getCurrentSessionId, syncSessionInTx, toTimerDto } from "./index";
 import { buildPodium, publicResults } from "./ranking";
 
 export function toPublicSessionDto(
   session: typeof sessions.$inferSelect,
   nominees: PublicNomineeDto[],
-  results: PublicResultsDto | null
+  results: PublicResultsDto | null,
+  sponsor: PublicSponsorDto | null
 ): PublicSessionDto {
   return {
     id: session.id,
@@ -25,6 +28,7 @@ export function toPublicSessionDto(
     autoAdvance: session.autoAdvance,
     nominees,
     results,
+    sponsor,
   };
 }
 
@@ -84,7 +88,17 @@ async function buildPublicSession(): Promise<PublicSessionDto | null> {
           sessionRow.revealedCount
         )
       : null;
-    return toPublicSessionDto(sessionRow, nominees, results);
+    const sponsor = await getSponsorDto(sessionRow.sponsorId, tx);
+    return toPublicSessionDto(
+      sessionRow,
+      nominees,
+      results,
+      sponsor && {
+        name: sponsor.name,
+        shortName: sponsor.shortName,
+        logoUrl: sponsor.logoUrl,
+      }
+    );
   });
 }
 
