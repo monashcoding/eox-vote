@@ -9,7 +9,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "EOX Best Dressed | MAC",
+  title: "Best Dressed | MAC",
   description: "Nominate and vote for best dressed on the night.",
 };
 

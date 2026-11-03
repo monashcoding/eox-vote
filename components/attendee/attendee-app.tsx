@@ -128,23 +128,21 @@ export function AttendeeApp(): React.JSX.Element {
             of Coding
           </Eyebrow>
         </div>
-        <h1 className="mt-8 text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
-          <span className="block">EOX</span>{" "}
-          <span className="mt-4 block">
-            Best{" "}
-            <span className="relative isolate inline-block">
-              {/* Min peeks over the top edge of the highlight from behind it. */}
-              <img
-                src="/mascots/min-artist.svg"
-                alt=""
-                aria-hidden="true"
-                draggable={false}
-                className="pointer-events-none absolute -right-[0.15em] bottom-[calc(100%_-_0.25em)] -z-10 w-[1.55em] max-w-none rotate-15 select-none"
-              />
-              {/* A ring in the page colour outlines the box where it covers Min. */}
-              <span className="inline-block rounded-tag bg-primary px-2 py-0.5 text-primary-foreground ring-4 ring-background">
-                Dressed
-              </span>
+        {/* The top margin is in em so it always clears Min, who rises about 1.45em above the line. */}
+        <h1 className="mt-[1.6em] text-[clamp(2.5rem,5.5vw+1.25rem,4.5rem)] leading-none font-extrabold tracking-tight">
+          Best{" "}
+          <span className="relative isolate inline-block">
+            {/* Min peeks over the top edge of the highlight from behind it. */}
+            <img
+              src="/mascots/min-artist.svg"
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              className="pointer-events-none absolute -right-[0.15em] bottom-[calc(100%_-_0.25em)] -z-10 w-[1.55em] max-w-none rotate-15 select-none"
+            />
+            {/* A ring in the page colour outlines the box where it covers Min. */}
+            <span className="inline-block rounded-tag bg-primary px-2 py-0.5 text-primary-foreground ring-4 ring-background">
+              Dressed
             </span>
           </span>
         </h1>
