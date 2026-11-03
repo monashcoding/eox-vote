@@ -304,7 +304,7 @@ export function NomineesPanel({
                   : `Showing ${matchCount} of ${nominees.length}`}
               </p>
             )}
-            <ul className="space-y-3">
+            <ul className="flex flex-col gap-3">
               {nominees.map((nominee) => (
                 <NomineeRow
                   key={nominee.id}
