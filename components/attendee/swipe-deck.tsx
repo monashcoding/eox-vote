@@ -1,24 +1,18 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
-import { Heart, Undo2, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useCallback, useLayoutEffect, useRef } from "react";
+import { Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createPortal } from "react-dom";
-import {
-  decideSwipe,
-  isTap,
-  swipeDistanceThreshold,
-  type SwipeDirection,
-} from "@/lib/client/swipe-decision";
+import type { SwipeDirection } from "@/lib/client/swipe-decision";
 import { cn } from "@/lib/utils";
+import { SwipeButtons, SwipeGlow, SwipeTag } from "./swipe-feedback";
+import {
+  EASE_REVEAL,
+  FLY_DURATION_MS,
+  REDUCED_FADE_MS,
+  usePrefersReducedMotion,
+  useSwipeGesture,
+} from "./use-swipe-gesture";
 
 /* ------------------------------------------------------------------ */
 /*  Public types                                                      */
@@ -27,43 +21,9 @@ import { cn } from "@/lib/utils";
 export type SwipeCard = { id: string; title: string; imageUrl: string };
 
 /* ------------------------------------------------------------------ */
-/*  Reduced-motion subscription (SSR safe, zero re-render loops)      */
-/* ------------------------------------------------------------------ */
-
-function subscribeReducedMotion(callback: () => void): () => void {
-  if (typeof window === "undefined" || !window.matchMedia) {
-    return () => {};
-  }
-  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-  mq.addEventListener("change", callback);
-  return () => mq.removeEventListener("change", callback);
-}
-
-function getReducedMotionSnapshot(): boolean {
-  if (typeof window === "undefined" || !window.matchMedia) return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function getReducedMotionServerSnapshot(): boolean {
-  return false;
-}
-
-/* The glow portal needs document.body, so it renders after hydration only. */
-function subscribeNever(): () => void {
-  return () => {};
-}
-
-function getClientSnapshot(): boolean {
-  return true;
-}
-
-/* ------------------------------------------------------------------ */
 /*  Component                                                         */
 /* ------------------------------------------------------------------ */
 
-const FLY_DURATION_MS = 220;
-const REDUCED_FADE_MS = 120;
-const EASE_REVEAL = "var(--ease-reveal, cubic-bezier(0.22, 1, 0.36, 1))";
 const DEAL_DURATION_MS = 260;
 const DEAL_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
 
@@ -101,12 +61,6 @@ function pileTransform(
   return `translate3d(${x}px, ${y}px, 0) rotate(${rotate}deg)`;
 }
 
-type FlightState = {
-  id: string;
-  card: SwipeCard;
-  direction: SwipeDirection;
-};
-
 export function SwipeDeck(props: {
   cards: SwipeCard[];
   onSwipe: (card: SwipeCard, direction: SwipeDirection) => void;
@@ -131,32 +85,10 @@ export function SwipeDeck(props: {
     className,
   } = props;
 
-  const reducedMotion = useSyncExternalStore(
-    subscribeReducedMotion,
-    getReducedMotionSnapshot,
-    getReducedMotionServerSnapshot,
-  );
+  const reducedMotion = usePrefersReducedMotion();
 
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [flight, setFlight] = useState<FlightState | null>(null);
-  // Distance at which the glow reaches full strength: the swipe threshold.
-  const [dragThreshold, setDragThreshold] = useState(swipeDistanceThreshold(0));
-  const isClient = useSyncExternalStore(
-    subscribeNever,
-    getClientSnapshot,
-    getReducedMotionServerSnapshot,
-  );
-
-  const cardRef = useRef<HTMLDivElement | null>(null);
   const pileRef = useRef<HTMLDivElement | null>(null);
   const shownIdsRef = useRef<ReadonlySet<string> | null>(null);
-  const pointerIdRef = useRef<number | null>(null);
-  const dragOriginRef = useRef({ x: 0, y: 0, time: 0 });
-  // Set by a tap's pointerup; the click that follows opens the photo. Opening
-  // on pointerup instead would let that click land on the new preview and
-  // close it straight away.
-  const tapRef = useRef(false);
 
   /*
    * Undo: the card put back flies in from the side it left by (a fade under
@@ -214,145 +146,24 @@ export function SwipeDeck(props: {
       );
   }, [pileKey, reducedMotion, returningCard]);
 
-  const topCard = cards[0];
-  const activeFlight =
-    flight && topCard && flight.id === topCard.id ? flight : null;
-
-  const startFlyOut = useCallback(
-    (card: SwipeCard, direction: SwipeDirection) => {
-      if (disabled) return;
-      setDragOffset(0);
-      setIsDragging(false);
-      setFlight({ id: card.id, card, direction });
-    },
-    [disabled],
-  );
-
-  /*
-   * Hand the card over and end the flight in the same batch, so the parent
-   * removes it before it can render again. A card that comes back (failed
-   * vote rollback) then renders normally instead of staying hidden.
-   */
-  const finishFlight = useCallback(
-    (current: FlightState) => {
-      setFlight(null);
-      onSwipe(current.card, current.direction);
-    },
-    [onSwipe],
-  );
-
-  /* Fallback timer if transitionend does not fire */
-  useEffect(() => {
-    if (!activeFlight) return;
-    const duration = reducedMotion
-      ? REDUCED_FADE_MS + 50
-      : FLY_DURATION_MS + 50;
-    const timer = setTimeout(() => finishFlight(activeFlight), duration);
-    return () => clearTimeout(timer);
-  }, [activeFlight, reducedMotion, finishFlight]);
-
-  const handleTransitionEnd = useCallback(
-    (e: React.TransitionEvent<HTMLDivElement>) => {
-      if (e.target !== e.currentTarget) return;
-      if (!activeFlight) return;
-      finishFlight(activeFlight);
-    },
-    [activeFlight, finishFlight],
-  );
-
-  /* ---- Pointer gesture handlers ---- */
-  const onPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (disabled || activeFlight !== null || e.button !== 0) return;
-      tapRef.current = false;
-      e.currentTarget.setPointerCapture(e.pointerId);
-      pointerIdRef.current = e.pointerId;
-      dragOriginRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
-      setIsDragging(true);
-      setDragThreshold(
-        swipeDistanceThreshold(cardRef.current?.offsetWidth ?? 0)
-      );
-      setDragOffset(0);
-    },
-    [disabled, activeFlight],
-  );
-
-  const onPointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!isDragging || pointerIdRef.current !== e.pointerId) return;
-      setDragOffset(e.clientX - dragOriginRef.current.x);
-    },
-    [isDragging],
-  );
-
-  const onPointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!isDragging || pointerIdRef.current !== e.pointerId) return;
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      }
-      pointerIdRef.current = null;
-      setIsDragging(false);
-
-      if (disabled || activeFlight !== null) {
-        setDragOffset(0);
-        return;
-      }
-
-      const dx = e.clientX - dragOriginRef.current.x;
-      const dy = e.clientY - dragOriginRef.current.y;
-      const elapsed = Date.now() - dragOriginRef.current.time;
-
-      if (onOpenCard && topCard && isTap(dx, dy, elapsed)) {
-        tapRef.current = true;
-        setDragOffset(0);
-        return;
-      }
-
-      const cardWidth = cardRef.current?.offsetWidth ?? 320;
-      const decision = decideSwipe(dx, cardWidth, elapsed);
-
-      if (decision !== null && topCard) {
-        startFlyOut(topCard, decision);
-      } else {
-        setDragOffset(0);
-      }
-    },
-    [disabled, isDragging, activeFlight, topCard, startFlyOut, onOpenCard],
-  );
-
-  const onPointerCancel = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (pointerIdRef.current !== e.pointerId) return;
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      }
-      pointerIdRef.current = null;
-      tapRef.current = false;
-      setIsDragging(false);
-      setDragOffset(0);
-    },
-    [],
-  );
-
-  const onCardClick = useCallback(() => {
-    if (!tapRef.current) return;
-    tapRef.current = false;
-    if (onOpenCard && topCard && !disabled && activeFlight === null) {
-      onOpenCard(topCard);
-    }
-  }, [onOpenCard, topCard, disabled, activeFlight]);
+  const topCard = cards[0] ?? null;
+  const gesture = useSwipeGesture({
+    card: topCard,
+    onSwipe,
+    onTap: onOpenCard,
+    disabled,
+  });
 
   /* ---- Keyboard controls ---- */
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (disabled || activeFlight !== null || !topCard) return;
+      if (gesture.busy || !topCard) return;
       if (e.key === "ArrowLeft") {
         e.preventDefault();
-        startFlyOut(topCard, "left");
+        gesture.swipe("left");
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
-        startFlyOut(topCard, "right");
+        gesture.swipe("right");
       } else if (
         e.key === "Enter" &&
         onOpenCard &&
@@ -363,47 +174,13 @@ export function SwipeDeck(props: {
         onOpenCard(topCard);
       }
     },
-    [disabled, activeFlight, topCard, startFlyOut, onOpenCard],
+    [gesture, topCard, onOpenCard],
   );
 
   /* Empty check */
   if (cards.length === 0) return null;
 
   const visibleCards = cards.slice(0, PILE_SIZE);
-  const dragProgress = Math.min(1, Math.abs(dragOffset) / 120);
-  const gestureProgress = activeFlight !== null ? 1 : dragProgress;
-
-  /* Overlays on top card */
-  const showVoteOverlay =
-    (isDragging && dragOffset > 0) ||
-    (activeFlight !== null && activeFlight.direction === "right");
-  const showSkipOverlay =
-    (isDragging && dragOffset < 0) ||
-    (activeFlight !== null && activeFlight.direction === "left");
-  const overlayOpacity = isDragging
-    ? Math.min(1, Math.abs(dragOffset) / 90)
-    : 1;
-
-  const isActionDisabled = disabled || activeFlight !== null;
-
-  /*
-   * Edge glow: red on the left while dragging left, green on the right while
-   * dragging right, full strength at the swipe threshold. A committed swipe
-   * (gesture, button or arrow key) holds it during the fly-out, then it fades.
-   */
-  let glowSide: SwipeDirection | null = null;
-  let glowOpacity = 0;
-  if (activeFlight) {
-    glowSide = activeFlight.direction;
-    glowOpacity = 1;
-  } else if (isDragging && dragOffset !== 0) {
-    glowSide = dragOffset > 0 ? "right" : "left";
-    glowOpacity = Math.min(1, Math.abs(dragOffset) / dragThreshold);
-  }
-  const glowTransition =
-    isDragging || reducedMotion
-      ? "none"
-      : `opacity ${FLY_DURATION_MS}ms ${EASE_REVEAL}`;
 
   return (
     <div
@@ -443,55 +220,33 @@ export function SwipeDeck(props: {
 
           // Cards below take the pose of the layer above as the top card is
           // dragged off (held still under reduced motion).
-          const progress = reducedMotion ? 0 : gestureProgress;
-          let transform = pileTransform(index, isTop ? 0 : progress, reducedMotion);
-          let transition =
-            isDragging || reducedMotion
-              ? "none"
-              : `transform ${FLY_DURATION_MS}ms ${EASE_REVEAL}`;
-          let opacity: number | undefined;
-
-          if (isTop) {
-            const rotationDeg = Math.max(
-              -12,
-              Math.min(12, (dragOffset / 280) * 12)
-            );
-
-            if (activeFlight) {
-              if (reducedMotion) {
-                transition = `opacity ${REDUCED_FADE_MS}ms ${EASE_REVEAL}`;
-                opacity = 0;
-              } else {
-                const flyX =
-                  activeFlight.direction === "right" ? "120vw" : "-120vw";
-                const flyRot = activeFlight.direction === "right" ? 15 : -15;
-                transform = `translate3d(${flyX}, 0, 0) rotate(${flyRot}deg)`;
-              }
-            } else if (isDragging && !reducedMotion) {
-              // Reduced motion: the card stays put, the Vote/Skip tag still shows the direction.
-              transform = pileTransform(0, 0, false, dragOffset, rotationDeg);
-            }
-          }
-
+          const motion = isTop
+            ? gesture.style((dragX, dragRotate, reduced) =>
+                pileTransform(0, 0, reduced, dragX, dragRotate)
+              )
+            : {
+                transform: pileTransform(
+                  index,
+                  reducedMotion ? 0 : gesture.progress,
+                  reducedMotion
+                ),
+                transition:
+                  gesture.isDragging || reducedMotion
+                    ? "none"
+                    : `transform ${FLY_DURATION_MS}ms ${EASE_REVEAL}`,
+              };
           const zIndex = (PILE_SIZE - index) * 10;
 
           return (
             <div
               key={card.id}
               data-card-id={card.id}
-              ref={isTop ? cardRef : undefined}
+              ref={isTop ? gesture.ref : undefined}
               role="group"
               aria-label={card.title}
-              onPointerDown={isTop ? onPointerDown : undefined}
-              onPointerMove={isTop ? onPointerMove : undefined}
-              onPointerUp={isTop ? onPointerUp : undefined}
-              onPointerCancel={isTop ? onPointerCancel : undefined}
-              onClick={isTop ? onCardClick : undefined}
-              onTransitionEnd={isTop ? handleTransitionEnd : undefined}
+              {...(isTop ? gesture.handlers : undefined)}
               style={{
-                transform,
-                transition,
-                opacity,
+                ...motion,
                 zIndex,
                 touchAction: "pan-y",
                 willChange: isTop ? "transform, opacity" : undefined,
@@ -512,28 +267,7 @@ export function SwipeDeck(props: {
               </p>
 
               {/* Direction tags: icon + word, never colour alone */}
-              {isTop && showVoteOverlay && (
-                <div
-                  className="pointer-events-none absolute top-3 left-3 rounded-tag bg-card select-none"
-                  style={{ opacity: overlayOpacity }}
-                >
-                  <Badge variant="success" tag className="border-0">
-                    <Heart aria-hidden fill="currentColor" />
-                    Vote
-                  </Badge>
-                </div>
-              )}
-              {isTop && showSkipOverlay && (
-                <div
-                  className="pointer-events-none absolute top-3 right-3 rounded-control bg-card select-none"
-                  style={{ opacity: overlayOpacity }}
-                >
-                  <Badge variant="outline" tag className="border-0">
-                    <X aria-hidden />
-                    Skip
-                  </Badge>
-                </div>
-              )}
+              {isTop && <SwipeTag tag={gesture.tag} />}
             </div>
           );
         })}
@@ -547,7 +281,7 @@ export function SwipeDeck(props: {
           <Button
             type="button"
             variant="ghost"
-            disabled={!canUndo || isActionDisabled}
+            disabled={!canUndo || gesture.busy}
             onClick={onUndo}
             className="text-muted"
           >
@@ -555,57 +289,12 @@ export function SwipeDeck(props: {
             Undo
           </Button>
         )}
-        <div className="flex items-center gap-6">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Skip"
-            disabled={isActionDisabled}
-            onClick={() => topCard && startFlyOut(topCard, "left")}
-            className="size-14 compact:size-11"
-          >
-            <X className="size-6" />
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            aria-label="Vote"
-            disabled={isActionDisabled}
-            onClick={() => topCard && startFlyOut(topCard, "right")}
-            className="size-14 compact:size-11"
-          >
-            <Heart className="size-6" fill="currentColor" />
-          </Button>
-        </div>
+        <SwipeButtons onSwipe={gesture.swipe} disabled={gesture.busy} />
       </div>
 
       {/* Portalled to <body>: the deck is a size container, which would trap
           fixed-position children inside it. */}
-      {isClient &&
-        createPortal(
-          <>
-            <div
-              aria-hidden
-              data-swipe-glow="left"
-              className="pointer-events-none fixed inset-y-0 left-0 z-50 w-[calc(7.5rem+env(safe-area-inset-left,0px))] bg-linear-to-r from-danger/45 to-transparent"
-              style={{
-                opacity: glowSide === "left" ? glowOpacity : 0,
-                transition: glowTransition,
-              }}
-            />
-            <div
-              aria-hidden
-              data-swipe-glow="right"
-              className="pointer-events-none fixed inset-y-0 right-0 z-50 w-[calc(7.5rem+env(safe-area-inset-right,0px))] bg-linear-to-l from-success/45 to-transparent"
-              style={{
-                opacity: glowSide === "right" ? glowOpacity : 0,
-                transition: glowTransition,
-              }}
-            />
-          </>,
-          document.body
-        )}
+      <SwipeGlow glow={gesture.glow} />
     </div>
   );
 }
