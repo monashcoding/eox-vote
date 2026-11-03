@@ -110,6 +110,21 @@ Postgres, managed by Drizzle migrations in `drizzle/`. Schema: `lib/db/schema.ts
 
 Deleting a session removes its nominees, photos and votes.
 
+## Data retention
+
+Nominations are kept for 30 days at most (`NOMINATION_RETENTION_DAYS` in `lib/retention.ts`). Attendees and hosts are told so in the app.
+
+- **What is deleted.** Every nomination submitted more than 30 days ago, with its photo and its votes. The 30 days count from when it was submitted; editing it later does not extend them. Sessions are kept, so a session shows fewer nominees and votes (and a different podium) once its nominations expire.
+- **When.** The app server runs the purge itself, once at start and then every hour (`instrumentation.ts`, `lib/nominations-retention.ts`), and logs the count as `[retention] Deleted N nominations older than 30 days.` It is skipped during `next build` and when `DATABASE_URL` is unset. A failure is logged and retried at the next run; it never stops the server.
+- **Self-hosting.** The purge only runs while the app server (`pnpm start`) is running, so keep it running continuously. A server that is stopped, or only started for events, deletes nothing until it is next started. With several instances, each runs it; the delete is idempotent, so that is harmless.
+- **Purging by hand.** Run this against the database, for example when the server has been down. The photos and votes go with the nominations (`on delete cascade`):
+
+  ```sql
+  delete from nominees where created_at < now() - interval '30 days';
+  ```
+
+  Public state caches for up to 1 second on each instance, so attendees see the change almost at once.
+
 ## Limitations
 
 - **Device identity is a cookie.** Each browser gets a random token signed with `DEVICE_SECRET` (`eox_device`, httpOnly, one year), issued by `/api/me` when the attendee page loads. Voting and nominating require that cookie, so a script cannot vote as a new device on every request, but a script that first calls `/api/me` still can. Only a hash is stored. Clearing cookies, using a private window, or switching browsers makes a new device, which can vote again and cannot edit earlier nominations.
