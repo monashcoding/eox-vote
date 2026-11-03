@@ -18,26 +18,23 @@ function Cross({ className }: { className?: string }): React.JSX.Element {
 }
 
 /**
- * MAC's logo × the partner's logo, both in the same square box. `named`
- * means the names are written beside the logos, so the images are
- * decorative; otherwise each logo carries its society's name as alt text.
+ * MAC's logo × the partner's logo, both in the same square box, with no names
+ * written beside them, so each logo carries its society's name as alt text.
  */
 export function CollabLogos({
   sponsor,
   size,
-  named,
   className,
 }: {
   sponsor: PublicSponsorDto;
   size: number;
-  named: boolean;
   className?: string;
 }): React.JSX.Element {
   return (
     <span className={cn("flex items-center", className)}>
-      <MacLogo size={size} decorative={named} />
+      <MacLogo size={size} />
       <Cross className="leading-none" />
-      <SponsorLogo src={sponsor.logoUrl} size={size} alt={named ? "" : sponsor.name} />
+      <SponsorLogo src={sponsor.logoUrl} size={size} alt={sponsor.name} />
     </span>
   );
 }

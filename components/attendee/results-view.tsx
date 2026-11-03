@@ -197,7 +197,6 @@ export function ResultsView({
             <CollabLogos
               sponsor={session.sponsor}
               size={48}
-              named={false}
               className="gap-2.5 text-lg"
             />
           ) : (
