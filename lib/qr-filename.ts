@@ -18,3 +18,8 @@ export function slugify(value: string): string {
 export function qrFilename(sessionName: string): string {
   return `${slugify(sessionName)}-qr.png`;
 }
+
+/** Download name for the code alone, e.g. `best-dressed-2026-qr-square.png`. */
+export function qrSquareFilename(sessionName: string): string {
+  return `${slugify(sessionName)}-qr-square.png`;
+}

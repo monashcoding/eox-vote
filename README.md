@@ -44,7 +44,7 @@ The compose database is Postgres 17 on host port **5433** (user and password `po
 
 ### Host page
 
-The host page is `/admin`. It is deliberately not linked from the attendee pages, so give the address only to hosts. From there hosts manage sessions, stages and timers, nominations (rename, replace photo, delete), the results reveal, and can save a QR code image for each session.
+The host page is `/admin`. It is deliberately not linked from the attendee pages, so give the address only to hosts. From there hosts manage sessions, stages and timers, nominations (rename, replace photo, delete), the results reveal, and can save a QR code for each session, either as a poster (logos, event name, address) or as the square code alone.
 
 ### Admin passcode
 
@@ -60,7 +60,7 @@ Sign-in cookies are signed with the current passcode, so **changing it signs eve
 
 ### QR codes
 
-Open a session in the host page and use the QR code panel. The address defaults to the site you are on; change it if attendees use a different public address. "Save QR code" downloads a printable PNG (white background, 1280 px wide) with the session name above the code and the address below it. It is drawn in the browser, so there is nothing to configure on the server.
+Open a session in the host page and use the QR code panel. The address defaults to the site you are on; change it if attendees use a different public address. "Save poster" downloads a printable PNG (white background, 1280 px wide) with the session name above the code and the address below it. "Save code only" downloads just the code, a white square about 1100 px a side, for slides or designs that add their own branding. Both are drawn in the browser, so there is nothing to configure on the server.
 
 ## Scripts
 

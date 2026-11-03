@@ -3,9 +3,9 @@
 import * as React from "react";
 import { Download } from "lucide-react";
 import { AdminSessionDetailDto } from "@/lib/api-types";
-import { qrFilename } from "@/lib/qr-filename";
+import { qrFilename, qrSquareFilename } from "@/lib/qr-filename";
 import { errorMessage } from "@/lib/client/error-message";
-import { renderQrImage } from "@/lib/client/qr-render";
+import { renderQrImage, renderQrSquare } from "@/lib/client/qr-render";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,6 +23,14 @@ interface QrPanelProps {
 }
 
 const MAX_URL_LENGTH = 500;
+
+/** The two images the panel saves: the poster, and the code alone. */
+const QrKind = {
+  Poster: "poster",
+  Square: "square",
+} as const;
+
+type QrKind = (typeof QrKind)[keyof typeof QrKind];
 
 function validateUrl(value: string): string | null {
   const trimmed = value.trim();
@@ -75,8 +83,9 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
   const [url, setUrl] = React.useState(() => `${window.location.origin}/`);
   const [renderError, setRenderError] = React.useState<string | null>(null);
   const [saveError, setSaveError] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState(false);
-  const previewRef = React.useRef<HTMLCanvasElement>(null);
+  const [saving, setSaving] = React.useState<QrKind | null>(null);
+  const posterRef = React.useRef<HTMLCanvasElement>(null);
+  const squareRef = React.useRef<HTMLCanvasElement>(null);
 
   const trimmedUrl = url.trim();
   const urlError = validateUrl(url);
@@ -84,19 +93,22 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
   const sponsorLogoUrl = session.sponsor?.logoUrl;
 
   React.useEffect(() => {
-    const canvas = previewRef.current;
-    if (!canvas || urlError) return;
+    const poster = posterRef.current;
+    const square = squareRef.current;
+    if (!poster || !square || urlError) return;
     let cancelled = false;
-    const fontFamily = getComputedStyle(canvas).fontFamily;
+    const fontFamily = getComputedStyle(poster).fontFamily;
 
     void (async () => {
       try {
+        // Needs no fonts or logos, and throws first if the address is too long.
+        renderQrSquare(square, trimmedUrl);
         const [logos] = await Promise.all([
           loadLogos(sponsorLogoUrl),
           loadCanvasFonts(fontFamily),
         ]);
         if (cancelled) return;
-        renderQrImage(canvas, { caption, url: trimmedUrl, ...logos }, fontFamily);
+        renderQrImage(poster, { caption, url: trimmedUrl, ...logos }, fontFamily);
         setRenderError(null);
       } catch (err: unknown) {
         if (cancelled) return;
@@ -115,18 +127,22 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
 
   const problem = urlError ?? renderError;
 
-  const handleSave = async () => {
+  const handleSave = async (kind: QrKind) => {
     if (saving || problem) return;
-    setSaving(true);
+    setSaving(kind);
     setSaveError(null);
     try {
       const canvas = document.createElement("canvas");
-      const fontFamily = getComputedStyle(document.body).fontFamily;
-      const [logos] = await Promise.all([
-        loadLogos(sponsorLogoUrl),
-        loadCanvasFonts(fontFamily),
-      ]);
-      renderQrImage(canvas, { caption, url: trimmedUrl, ...logos }, fontFamily);
+      if (kind === QrKind.Poster) {
+        const fontFamily = getComputedStyle(document.body).fontFamily;
+        const [logos] = await Promise.all([
+          loadLogos(sponsorLogoUrl),
+          loadCanvasFonts(fontFamily),
+        ]);
+        renderQrImage(canvas, { caption, url: trimmedUrl, ...logos }, fontFamily);
+      } else {
+        renderQrSquare(canvas, trimmedUrl);
+      }
       // Executor form on purpose: Promise.withResolvers is missing on iOS < 17.4.
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob(resolve, "image/png");
@@ -136,7 +152,10 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = qrFilename(session.name);
+      link.download =
+        kind === QrKind.Poster
+          ? qrFilename(session.name)
+          : qrSquareFilename(session.name);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -145,7 +164,7 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
     } catch (err: unknown) {
       setSaveError(errorMessage(err, "Could not save the QR code."));
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
@@ -154,12 +173,13 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
       <CardHeader>
         <CardTitle className="text-lg sm:text-xl">QR code</CardTitle>
         <CardDescription>
-          Print it or put it on a slide. Attendees scan it to open the voting
-          page.
+          Print the poster or put it on a slide, or save just the code as a
+          square for designs that add their own branding. Attendees scan it to
+          open the voting page.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] md:items-start">
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] md:items-start">
           <div className="order-2 md:order-1 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="qr-url">Address in the QR code</Label>
@@ -183,25 +203,56 @@ export function QrPanel({ session }: QrPanelProps): React.JSX.Element {
             <ErrorNote message={problem} />
             <ErrorNote message={saveError} />
 
-            <Button
-              size="lg"
-              className="w-full md:w-auto"
-              onClick={handleSave}
-              disabled={saving || Boolean(problem)}
-            >
-              <Download />
-              {saving ? "Saving..." : "Save QR code"}
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                size="lg"
+                className="w-full sm:w-auto"
+                onClick={() => void handleSave(QrKind.Poster)}
+                disabled={saving !== null || Boolean(problem)}
+              >
+                <Download />
+                {saving === QrKind.Poster ? "Saving..." : "Save poster"}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => void handleSave(QrKind.Square)}
+                disabled={saving !== null || Boolean(problem)}
+              >
+                <Download />
+                {saving === QrKind.Square ? "Saving..." : "Save code only"}
+              </Button>
+            </div>
           </div>
 
-          <div className="order-1 md:order-2">
-            <canvas
-              ref={previewRef}
-              role="img"
-              aria-label={`QR code for ${caption}, pointing to ${trimmedUrl}`}
-              className="mx-auto block h-auto w-full max-w-xs rounded-control border-2 border-border bg-white"
-              hidden={Boolean(urlError)}
-            />
+          {/* Side by side, the poster and the code alone it is built around. */}
+          <div
+            className="order-1 grid grid-cols-2 items-start gap-4 md:order-2"
+            hidden={Boolean(urlError)}
+          >
+            <figure className="space-y-2">
+              <canvas
+                ref={posterRef}
+                role="img"
+                aria-label={`QR poster for ${caption}, pointing to ${trimmedUrl}`}
+                className="block h-auto w-full rounded-control border-2 border-border bg-white"
+              />
+              <figcaption className="text-center text-xs text-muted">
+                Poster
+              </figcaption>
+            </figure>
+            <figure className="space-y-2">
+              <canvas
+                ref={squareRef}
+                role="img"
+                aria-label={`QR code pointing to ${trimmedUrl}`}
+                className="block h-auto w-full rounded-control border-2 border-border bg-white"
+              />
+              <figcaption className="text-center text-xs text-muted">
+                Code only
+              </figcaption>
+            </figure>
           </div>
         </div>
       </CardContent>

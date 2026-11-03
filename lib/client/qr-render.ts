@@ -1,4 +1,4 @@
-import QRCode from "qrcode";
+import QRCode, { type QRCode as QrSymbol } from "qrcode";
 
 // The image is a printed artefact on white paper, so these are literal colours
 // rather than theme tokens (the dark UI theme must not leak into the PNG).
@@ -8,6 +8,8 @@ const TEXT_COLOUR = "#252525";
 
 const IMAGE_WIDTH_PX = 1280;
 const MARGIN_PX = 80;
+/** Width the poster's text and code may use; the square is this code alone. */
+const CONTENT_WIDTH_PX = IMAGE_WIDTH_PX - MARGIN_PX * 2;
 /** Quiet zone required by the QR spec, in modules. */
 const QUIET_ZONE_MODULES = 4;
 const CAPTION_FONT_PX = 64;
@@ -109,6 +111,52 @@ function truncate(
   return kept;
 }
 
+/** Error correction Q (25 percent) survives scuffs and projector glare. */
+function createQr(url: string): QrSymbol {
+  return QRCode.create(url, { errorCorrectionLevel: "Q" });
+}
+
+/**
+ * Fits the code and its quiet zone in CONTENT_WIDTH_PX with whole-pixel
+ * modules, which keep the edges crisp. The poster and the square share it, so
+ * the square is the poster's code module for module.
+ */
+function codeLayout(qr: QrSymbol) {
+  const moduleCount = qr.modules.size;
+  const modulePx = Math.max(
+    1,
+    Math.floor(CONTENT_WIDTH_PX / (moduleCount + QUIET_ZONE_MODULES * 2))
+  );
+  const codePx = modulePx * moduleCount;
+  const quietPx = modulePx * QUIET_ZONE_MODULES;
+  return { modulePx, codePx, quietPx, boxPx: codePx + quietPx * 2 };
+}
+
+/** Black modules, the top left one at (left, top); the paper shows elsewhere. */
+function drawModules(
+  context: CanvasRenderingContext2D,
+  qr: QrSymbol,
+  left: number,
+  top: number,
+  modulePx: number
+): void {
+  const moduleCount = qr.modules.size;
+  const bits = qr.modules.data;
+  context.fillStyle = MODULE_COLOUR;
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (bits[row * moduleCount + col]) {
+        context.fillRect(
+          left + col * modulePx,
+          top + row * modulePx,
+          modulePx,
+          modulePx
+        );
+      }
+    }
+  }
+}
+
 /**
  * Draws a printable QR poster onto `canvas`: white paper, the MAC logo (with
  * the collaborating society's logo and a "×" beside it, when there is one),
@@ -121,19 +169,8 @@ export function renderQrImage(
   { caption, url, logo, sponsorLogo }: QrImageContent,
   fontFamily: string
 ): void {
-  // Error correction Q (25 percent) survives scuffs and projector glare.
-  const qr = QRCode.create(url, { errorCorrectionLevel: "Q" });
-  const moduleCount = qr.modules.size;
-  const bits = qr.modules.data;
-
-  const contentWidth = IMAGE_WIDTH_PX - MARGIN_PX * 2;
-  const modulePx = Math.max(
-    1,
-    Math.floor(contentWidth / (moduleCount + QUIET_ZONE_MODULES * 2))
-  );
-  const codePx = modulePx * moduleCount;
-  const quietPx = modulePx * QUIET_ZONE_MODULES;
-  const boxPx = codePx + quietPx * 2;
+  const qr = createQr(url);
+  const { modulePx, codePx, quietPx, boxPx } = codeLayout(qr);
 
   const context = canvas.getContext("2d");
   if (!context) throw new Error("This browser cannot draw the QR code.");
@@ -146,11 +183,11 @@ export function renderQrImage(
   const captionLines = wrapWords(
     context,
     caption,
-    contentWidth,
+    CONTENT_WIDTH_PX,
     MAX_CAPTION_LINES
   );
   context.font = urlFont;
-  const urlLines = wrapChars(context, url, contentWidth, MAX_URL_LINES);
+  const urlLines = wrapChars(context, url, CONTENT_WIDTH_PX, MAX_URL_LINES);
 
   const logoBlockPx = logo ? LOGO_PX + GAP_PX : 0;
   const height =
@@ -209,22 +246,14 @@ export function renderQrImage(
   }
   y += GAP_PX;
 
-  // Integer module size keeps edges crisp; the quiet zone is already paper.
-  const codeLeft = Math.round((IMAGE_WIDTH_PX - codePx) / 2);
-  const codeTop = y + quietPx;
-  context.fillStyle = MODULE_COLOUR;
-  for (let row = 0; row < moduleCount; row++) {
-    for (let col = 0; col < moduleCount; col++) {
-      if (bits[row * moduleCount + col]) {
-        context.fillRect(
-          codeLeft + col * modulePx,
-          codeTop + row * modulePx,
-          modulePx,
-          modulePx
-        );
-      }
-    }
-  }
+  // Centred under the caption; the quiet zone is already paper.
+  drawModules(
+    context,
+    qr,
+    Math.round((IMAGE_WIDTH_PX - codePx) / 2),
+    y + quietPx,
+    modulePx
+  );
   y += boxPx + GAP_PX;
 
   context.fillStyle = TEXT_COLOUR;
@@ -233,4 +262,23 @@ export function renderQrImage(
     context.fillText(line, centreX, y + URL_LINE_PX / 2);
     y += URL_LINE_PX;
   }
+}
+
+/**
+ * Draws just the code onto `canvas`: black modules in their quiet zone on a
+ * white square, with no logo or text, for slides and designs that bring their
+ * own. It is the poster's code pixel for pixel, a little over 1000 px a side.
+ * Throws if the text does not fit in a QR code.
+ */
+export function renderQrSquare(canvas: HTMLCanvasElement, url: string): void {
+  const qr = createQr(url);
+  const { modulePx, quietPx, boxPx } = codeLayout(qr);
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("This browser cannot draw the QR code.");
+
+  canvas.width = boxPx;
+  canvas.height = boxPx;
+  context.fillStyle = PAPER_COLOUR;
+  context.fillRect(0, 0, boxPx, boxPx);
+  drawModules(context, qr, quietPx, quietPx, modulePx);
 }
