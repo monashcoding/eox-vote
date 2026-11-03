@@ -89,6 +89,11 @@ export type SwipeGesture = {
   tag: { direction: SwipeDirection; opacity: number } | null;
   /** The edge glow to show, if any. */
   glow: { side: SwipeDirection | null; opacity: number; transition: string };
+  /**
+   * True once after the pointer went up from a real drag (not a tap), so the
+   * click that follows can be ignored; reading it clears it.
+   */
+  consumeDrag: () => boolean;
   reducedMotion: boolean;
 };
 
@@ -125,6 +130,9 @@ export function useSwipeGesture<T extends { id: string }>({
   // pointerup instead would let that click land on what the tap opened and
   // close it straight away.
   const tapRef = useRef(false);
+  // Set when a drag ends; a click that follows it must not count as a tap on
+  // anything (a mouse drag ending over the backdrop, for one).
+  const draggedRef = useRef(false);
 
   const activeFlight = flight && card && flight.id === card.id ? flight : null;
 
@@ -174,6 +182,7 @@ export function useSwipeGesture<T extends { id: string }>({
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (disabled || activeFlight !== null || e.button !== 0) return;
       tapRef.current = false;
+      draggedRef.current = false;
       e.currentTarget.setPointerCapture(e.pointerId);
       pointerIdRef.current = e.pointerId;
       dragOriginRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
@@ -215,6 +224,7 @@ export function useSwipeGesture<T extends { id: string }>({
         setDragOffset(0);
         return;
       }
+      draggedRef.current = !isTap(dx, dy, elapsed);
 
       const width = ref.current?.offsetWidth ?? 320;
       const decision = decideSwipe(dx, width, elapsed);
@@ -257,6 +267,12 @@ export function useSwipeGesture<T extends { id: string }>({
     },
     [disabled, activeFlight, card, startFlyOut],
   );
+
+  const consumeDrag = useCallback(() => {
+    const dragged = draggedRef.current;
+    draggedRef.current = false;
+    return dragged;
+  }, []);
 
   const dragProgress = Math.min(1, Math.abs(dragOffset) / 120);
 
@@ -331,6 +347,7 @@ export function useSwipeGesture<T extends { id: string }>({
     style,
     tag,
     glow: { side: glowSide, opacity: glowOpacity, transition: glowTransition },
+    consumeDrag,
     reducedMotion,
   };
 }
