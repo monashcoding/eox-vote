@@ -517,7 +517,7 @@ export function SwipeDeck(props: {
                   className="pointer-events-none absolute top-3 left-3 rounded-tag bg-card select-none"
                   style={{ opacity: overlayOpacity }}
                 >
-                  <Badge variant="success" tag>
+                  <Badge variant="success" tag className="border-0">
                     <Heart aria-hidden fill="currentColor" />
                     Vote
                   </Badge>
@@ -528,7 +528,7 @@ export function SwipeDeck(props: {
                   className="pointer-events-none absolute top-3 right-3 rounded-control bg-card select-none"
                   style={{ opacity: overlayOpacity }}
                 >
-                  <Badge variant="outline" tag>
+                  <Badge variant="outline" tag className="border-0">
                     <X aria-hidden />
                     Skip
                   </Badge>
