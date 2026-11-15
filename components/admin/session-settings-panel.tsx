@@ -3,9 +3,19 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Check, Trash2 } from "lucide-react";
-import { AdminSessionDetailDto } from "@/lib/api-types";
+import { AdminSessionDetailDto, Stage } from "@/lib/api-types";
+import {
+  normaliseCategoryList,
+  normaliseCategoryName,
+  type CategoryDraft,
+} from "@/lib/category-fields";
 import { ApiError } from "@/lib/client/api";
 import { useAdminApi } from "./admin-gate";
+import {
+  CategoryListField,
+  categoryRows,
+  type CategoryRow,
+} from "./category-list-field";
 import { SponsorField } from "./sponsor-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,12 +36,22 @@ interface SettingsFields
   sponsorId: string | null;
 }
 
+/** What the PATCH accepts: categories are the whole list, in order. */
+interface SettingsChanges extends Partial<SettingsFields> {
+  categories?: CategoryDraft[];
+}
+
+/** Edited fields; category rows carry a key so new rows keep their inputs. */
+interface SettingsDraft extends Partial<SettingsFields> {
+  categories?: CategoryRow[];
+}
+
 /** Draft fields that differ from the saved session; trims the name first. */
 function changedFields(
-  draft: Partial<SettingsFields>,
+  draft: SettingsDraft,
   session: AdminSessionDetailDto
-): Partial<SettingsFields> {
-  const changes: Partial<SettingsFields> = {};
+): SettingsChanges {
+  const changes: SettingsChanges = {};
   const name = draft.name?.trim();
   if (name !== undefined && name !== session.name) changes.name = name;
   if (
@@ -58,6 +78,27 @@ function changedFields(
   ) {
     changes.sponsorId = draft.sponsorId;
   }
+  const rows = draft.categories;
+  const saved = session.categories;
+  if (
+    rows !== undefined &&
+    !(
+      rows.length === saved.length &&
+      rows.every(
+        (row, index) =>
+          row.id === saved[index].id &&
+          normaliseCategoryName(row.name) === saved[index].name
+      )
+    )
+  ) {
+    const checked = normaliseCategoryList(rows);
+    // An invalid list still counts as a change so the form stays dirty; the
+    // panel shows the error and blocks the save until it is fixed.
+    changes.categories =
+      "categories" in checked
+        ? checked.categories
+        : rows.map(({ id, name }) => ({ id, name }));
+  }
   return changes;
 }
 
@@ -71,7 +112,7 @@ export function SessionSettingsPanel({
   // Only fields the host has edited live here. Everything else shows the
   // polled session, so changes from the stage panel or another tab show up
   // and a save never sends values the host did not touch.
-  const [draft, setDraft] = React.useState<Partial<SettingsFields>>({});
+  const [draft, setDraft] = React.useState<SettingsDraft>({});
   const name = draft.name ?? session.name;
   const nominatingMinutes =
     draft.nominatingMinutes ?? session.nominatingMinutes;
@@ -79,6 +120,15 @@ export function SessionSettingsPanel({
   const autoAdvance = draft.autoAdvance ?? session.autoAdvance;
   const sponsorId =
     draft.sponsorId !== undefined ? draft.sponsorId : (session.sponsor?.id ?? null);
+  const categories = draft.categories ?? categoryRows(session.categories);
+  const categoryCheck = draft.categories
+    ? normaliseCategoryList(draft.categories)
+    : null;
+  const categoryError =
+    categoryCheck && "error" in categoryCheck ? categoryCheck.error : null;
+  // The server allows only renames once results are shown.
+  const categoriesLocked =
+    session.stage === Stage.Results || session.stage === Stage.Finished;
   const editField = <K extends keyof SettingsFields>(
     key: K,
     value: SettingsFields[K]
@@ -97,7 +147,7 @@ export function SessionSettingsPanel({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || saving) return;
+    if (!name.trim() || categoryError || saving) return;
     if (!dirty) {
       setDraft({});
       return;
@@ -202,6 +252,17 @@ export function SessionSettingsPanel({
               </div>
             </div>
 
+            <CategoryListField
+              value={categories}
+              onChange={(rows) =>
+                setDraft((current) => ({ ...current, categories: rows }))
+              }
+              nominees={session.nominees}
+              locked={categoriesLocked}
+              disabled={saving}
+              error={categoryError}
+            />
+
             <SponsorField
               value={sponsorId}
               onChange={(next) => editField("sponsorId", next)}
@@ -241,7 +302,7 @@ export function SessionSettingsPanel({
                 type="submit"
                 size="lg"
                 className="w-full md:w-auto"
-                disabled={saving || !name.trim() || !dirty}
+                disabled={saving || !name.trim() || !dirty || categoryError !== null}
               >
                 {saving ? "Saving..." : "Save changes"}
               </Button>
