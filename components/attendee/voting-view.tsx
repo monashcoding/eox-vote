@@ -26,7 +26,13 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsLabel,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { SwipeDeck, type SwipeCard } from "./swipe-deck";
 import type { SwipeDirection } from "@/lib/client/swipe-decision";
 import {
@@ -502,11 +508,15 @@ export function VotingView({
               <TabsTrigger key={c.id} value={c.id}>
                 {multipleCategories ? (
                   <>
-                    {finished && <Check aria-hidden className="size-4 shrink-0 text-success" />}
-                    {/* Long names wrap onto a second line within the 44px tab. */}
-                    <span className="line-clamp-2 text-center leading-tight">
-                      {c.name}
-                    </span>
+                    {/* In the corner, so the name keeps the tab's full width. */}
+                    {finished && (
+                      <Check
+                        aria-hidden
+                        strokeWidth={3}
+                        className="absolute top-1 right-1 size-3 text-success"
+                      />
+                    )}
+                    <TabsLabel>{c.name}</TabsLabel>
                     {finished && <span className="sr-only"> (done)</span>}
                   </>
                 ) : (

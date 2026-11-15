@@ -2,7 +2,13 @@
 
 import * as React from "react";
 import type { CategoryDto } from "@/lib/api-types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsLabel,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { BottomTabBar } from "./bottom-tab-bar";
 
 /**
@@ -40,10 +46,7 @@ export function CategoryTabs({
         <TabsList aria-label="Categories">
           {categories.map((category) => (
             <TabsTrigger key={category.id} value={category.id}>
-              {/* Long names wrap onto a second line within the 44px tab. */}
-              <span className="line-clamp-2 text-center leading-tight">
-                {category.name}
-              </span>
+              <TabsLabel>{category.name}</TabsLabel>
             </TabsTrigger>
           ))}
         </TabsList>
