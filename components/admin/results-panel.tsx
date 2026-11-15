@@ -6,11 +6,13 @@ import {
   AdminSessionDetailDto,
   ControlAction,
   ControlRequest,
+  PodiumPlaceDto,
   Stage,
 } from "@/lib/api-types";
 import { useAdminApi } from "./admin-gate";
 import { errorMessage } from "@/lib/client/error-message";
 import { placeLabel } from "@/lib/place-label";
+import { revealSteps } from "@/lib/session/ranking";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorNote } from "@/components/ui/empty-state";
@@ -34,13 +36,16 @@ export function ResultsPanel({
     return null;
   }
 
-  const { revealedCount, totalRevealSteps, podium } = session;
+  const { revealedCount, totalRevealSteps, podiums, categories } = session;
   const isResults = session.stage === Stage.Results;
-  const allRevealed = revealedCount >= totalRevealSteps;
-  // Podium is 1st first; reveal goes lowest place first.
-  const nextGroup = allRevealed
-    ? null
-    : podium[totalRevealSteps - 1 - revealedCount];
+  const multiCategory = categories.length > 1;
+  const nextStep =
+    revealedCount >= totalRevealSteps
+      ? null
+      : (revealSteps(podiums)[revealedCount] ?? null);
+  const nextCategoryName = nextStep
+    ? categories.find((category) => category.id === nextStep.categoryId)?.name
+    : undefined;
 
   const sendControl = async (request: ControlRequest) => {
     if (busy) return;
@@ -85,13 +90,15 @@ export function ResultsPanel({
             <Button
               size="lg"
               className="w-full sm:w-auto"
-              disabled={busy || !nextGroup}
+              disabled={busy || !nextStep}
               onClick={() => void sendControl({ action: ControlAction.RevealNext })}
             >
               <Trophy />
               <span>
-                {nextGroup
-                  ? `Reveal ${placeLabel(nextGroup, true)}`
+                {nextStep
+                  ? multiCategory && nextCategoryName
+                    ? `Reveal ${placeLabel(nextStep.place, true)} in ${nextCategoryName}`
+                    : `Reveal ${placeLabel(nextStep.place, true)}`
                   : "All places revealed"}
               </span>
             </Button>
@@ -122,41 +129,74 @@ export function ResultsPanel({
           </p>
         )}
 
-        {peeking && podium.length > 0 && (
-          <ol className="space-y-2">
-            {podium.map((group) => (
-              <li
-                key={group.place}
-                className="rounded-control border-2 border-border bg-surface-soft p-3"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <Eyebrow>{placeLabel(group)}</Eyebrow>
-                  <span className="text-xs text-muted">
-                    <span className="font-semibold tabular-nums text-foreground">
-                      {group.votes}
-                    </span>{" "}
-                    {group.votes === 1 ? "vote" : "votes"}
-                  </span>
-                </div>
-                <ul className="mt-2 flex flex-wrap gap-3">
-                  {group.nominees.map((nominee) => (
-                    <li key={nominee.id} className="flex items-center gap-2">
-                      <img
-                        src={nominee.photoUrl}
-                        alt=""
-                        className="size-10 rounded-control border-2 border-border object-cover"
-                      />
-                      <span className="text-sm font-semibold">
-                        {nominee.firstName} {nominee.lastName}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ol>
-        )}
+        {peeking &&
+          (multiCategory ? (
+            <div className="space-y-4">
+              {categories.map((category) => {
+                const places =
+                  podiums.find((podium) => podium.categoryId === category.id)
+                    ?.places ?? [];
+                return (
+                  <section key={category.id} className="space-y-2">
+                    <h3 className="text-sm font-semibold">{category.name}</h3>
+                    {places.length > 0 ? (
+                      <PeekList places={places} />
+                    ) : (
+                      <p className="text-sm text-muted">No votes</p>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
+            podiums[0] &&
+            podiums[0].places.length > 0 && (
+              <PeekList places={podiums[0].places} />
+            )
+          ))}
       </CardContent>
     </Card>
+  );
+}
+
+/** One category's podium for the host's peek, 1st first. */
+function PeekList({
+  places,
+}: {
+  places: readonly PodiumPlaceDto[];
+}): React.JSX.Element {
+  return (
+    <ol className="space-y-2">
+      {places.map((group) => (
+        <li
+          key={group.place}
+          className="rounded-control border-2 border-border bg-surface-soft p-3"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <Eyebrow>{placeLabel(group)}</Eyebrow>
+            <span className="text-xs text-muted">
+              <span className="font-semibold tabular-nums text-foreground">
+                {group.votes}
+              </span>{" "}
+              {group.votes === 1 ? "vote" : "votes"}
+            </span>
+          </div>
+          <ul className="mt-2 flex flex-wrap gap-3">
+            {group.nominees.map((nominee) => (
+              <li key={nominee.id} className="flex items-center gap-2">
+                <img
+                  src={nominee.photoUrl}
+                  alt=""
+                  className="size-10 rounded-control border-2 border-border object-cover"
+                />
+                <span className="text-sm font-semibold">
+                  {nominee.firstName} {nominee.lastName}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ol>
   );
 }

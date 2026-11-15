@@ -1,11 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { Stage } from "../api-types.ts";
-import type { PodiumPlaceDto } from "../api-types.ts";
+import type { CategoryPodiumDto, PodiumPlaceDto } from "../api-types.ts";
 import {
+  buildCategoryPodiums,
   buildPodium,
   clampRevealed,
   publicResults,
+  revealSteps,
+  type CategoryRankableNominee,
   type RankableNominee,
 } from "./ranking.ts";
 
@@ -145,47 +148,110 @@ describe("Ranking: clampRevealed", () => {
   });
 });
 
+describe("Ranking: buildCategoryPodiums", () => {
+  function voter(id: string, votesByCategory: Record<string, number>): CategoryRankableNominee {
+    const { firstName, lastName, photoUrl } = nominee(id, 0);
+    return { id, firstName, lastName, photoUrl, votesByCategory };
+  }
+
+  it("ranks every nominee in every category on that category's votes", () => {
+    const podiums = buildCategoryPodiums(
+      [{ id: "dressed" }, { id: "animal" }],
+      [voter("a", { dressed: 5, animal: 1 }), voter("b", { dressed: 1, animal: 4 })]
+    );
+    assert.deepEqual(
+      podiums.map((p) => [p.categoryId, shape(p.places)]),
+      [
+        ["dressed", [[1, 5, ["a"]], [2, 1, ["b"]]]],
+        ["animal", [[1, 4, ["b"]], [2, 1, ["a"]]]],
+      ]
+    );
+  });
+
+  it("keeps a category without votes, with an empty podium", () => {
+    const podiums = buildCategoryPodiums(
+      [{ id: "dressed" }, { id: "animal" }],
+      [voter("a", { dressed: 2 })]
+    );
+    assert.deepEqual(podiums[1], { categoryId: "animal", places: [] });
+  });
+});
+
+describe("Ranking: revealSteps", () => {
+  it("goes category by category, each lowest place first", () => {
+    const podiums: CategoryPodiumDto[] = [
+      { categoryId: "dressed", places: buildPodium([nominee("a", 9), nominee("b", 5), nominee("c", 2)]) },
+      { categoryId: "empty", places: [] },
+      { categoryId: "animal", places: buildPodium([nominee("d", 3), nominee("e", 1)]) },
+    ];
+    assert.deepEqual(
+      revealSteps(podiums).map((step) => [step.categoryId, step.place.place]),
+      [
+        ["dressed", 3],
+        ["dressed", 2],
+        ["dressed", 1],
+        ["animal", 2],
+        ["animal", 1],
+      ]
+    );
+  });
+});
+
 describe("Ranking: publicResults", () => {
-  const podium = buildPodium([nominee("a", 9), nominee("b", 5), nominee("c", 2)]);
+  const podiums: CategoryPodiumDto[] = [
+    { categoryId: "dressed", places: buildPodium([nominee("a", 9), nominee("b", 5), nominee("c", 2)]) },
+    { categoryId: "animal", places: buildPodium([nominee("d", 3), nominee("e", 1)]) },
+  ];
+  /** `[categoryId, totalSteps, revealed places]` per category. */
+  const view = (stage: Stage, revealed: number) =>
+    publicResults(stage, podiums, revealed)?.categories.map((c) => [
+      c.categoryId,
+      c.totalSteps,
+      c.revealed.map((g) => g.place),
+    ]);
 
   it("is null outside results and finished", () => {
     for (const stage of [Stage.Pending, Stage.Nominating, Stage.Voting]) {
-      assert.equal(publicResults(stage, podium, 3), null);
+      assert.equal(publicResults(stage, podiums, 3), null);
     }
   });
 
-  it("shows nothing before the first reveal but reports the total", () => {
-    assert.deepEqual(publicResults(Stage.Results, podium, 0), {
-      totalSteps: 3,
-      revealed: [],
-    });
+  it("shows nothing before the first reveal but reports each category's total", () => {
+    assert.deepEqual(view(Stage.Results, 0), [
+      ["dressed", 3, []],
+      ["animal", 2, []],
+    ]);
   });
 
-  it("shows only the first revealedCount steps, lowest place first", () => {
-    const one = publicResults(Stage.Results, podium, 1);
-    assert.deepEqual(one?.revealed.map((g) => g.place), [3]);
-    const two = publicResults(Stage.Results, podium, 2);
-    assert.deepEqual(two?.revealed.map((g) => g.place), [3, 2]);
-    assert.equal(two?.totalSteps, 3);
+  it("reveals the first category lowest place first, then the next", () => {
+    assert.deepEqual(view(Stage.Results, 2), [
+      ["dressed", 3, [3, 2]],
+      ["animal", 2, []],
+    ]);
+    assert.deepEqual(view(Stage.Results, 4), [
+      ["dressed", 3, [3, 2, 1]],
+      ["animal", 2, [2]],
+    ]);
   });
 
   it("caps a stale counter at the number of steps", () => {
-    assert.equal(publicResults(Stage.Results, podium, 99)?.revealed.length, 3);
+    assert.deepEqual(view(Stage.Results, 99), [
+      ["dressed", 3, [3, 2, 1]],
+      ["animal", 2, [2, 1]],
+    ]);
   });
 
   it("shows every step when finished regardless of the counter", () => {
-    const result = publicResults(Stage.Finished, podium, 0);
-    assert.deepEqual(result?.revealed.map((g) => g.place), [3, 2, 1]);
+    assert.deepEqual(view(Stage.Finished, 0), [
+      ["dressed", 3, [3, 2, 1]],
+      ["animal", 2, [2, 1]],
+    ]);
   });
 
-  it("reports zero steps when nobody has votes", () => {
-    assert.deepEqual(publicResults(Stage.Results, [], 0), {
-      totalSteps: 0,
-      revealed: [],
-    });
-    assert.deepEqual(publicResults(Stage.Finished, [], 0), {
-      totalSteps: 0,
-      revealed: [],
-    });
+  it("reports zero steps for a category nobody voted in", () => {
+    assert.deepEqual(
+      publicResults(Stage.Results, [{ categoryId: "dressed", places: [] }], 0),
+      { categories: [{ categoryId: "dressed", totalSteps: 0, revealed: [] }] }
+    );
   });
 });

@@ -29,6 +29,13 @@
       "when": 1793670214323,
       "tag": "0003_session_sponsor",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794715548087,
+      "tag": "0004_vote_categories",
+      "breakpoints": true
     }
   ]
 }

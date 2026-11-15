@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql, type SQL } from "drizzle-orm";
 import type { AdminNomineeDto, PublicNomineeDto } from "./api-types";
 import { db, type DbReader } from "./db";
 import { requireUuid } from "./http";
@@ -17,14 +17,42 @@ export function toPublicNomineeDto(row: NomineeRow): PublicNomineeDto {
 
 export function toAdminNomineeDto(
   row: NomineeRow,
-  voteCount: number
+  votesByCategory: Record<string, number>
 ): AdminNomineeDto {
   return {
     ...toPublicNomineeDto(row),
-    votes: voteCount,
+    votesByCategory,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
   };
+}
+
+/**
+ * Vote counts per category for the nominees matching `where` (a condition on
+ * `nominees` or `votes`), keyed by nominee id. Nominees without votes are
+ * left out.
+ */
+export async function countVotesByNominee(
+  where: SQL | undefined,
+  executor: DbReader = db
+): Promise<Map<string, Record<string, number>>> {
+  const rows = await executor
+    .select({
+      nomineeId: votes.nomineeId,
+      categoryId: votes.categoryId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(votes)
+    .innerJoin(nominees, eq(nominees.id, votes.nomineeId))
+    .where(where)
+    .groupBy(votes.nomineeId, votes.categoryId);
+  const byNominee = new Map<string, Record<string, number>>();
+  for (const row of rows) {
+    const counts = byNominee.get(row.nomineeId) ?? {};
+    counts[row.categoryId] = row.count;
+    byNominee.set(row.nomineeId, counts);
+  }
+  return byNominee;
 }
 
 /** All nominees of a session, oldest first. */
@@ -40,22 +68,21 @@ export async function listPublicNominees(
   return rows.map(toPublicNomineeDto);
 }
 
-/** All nominees of a session with derived vote counts, oldest first. */
+/** All nominees of a session with derived vote counts per category, oldest first. */
 export async function listAdminNominees(
   sessionId: string,
   executor: DbReader = db
 ): Promise<AdminNomineeDto[]> {
   const rows = await executor
-    .select({
-      nominee: nominees,
-      voteCount: sql<number>`count(${votes.nomineeId})::int`,
-    })
+    .select()
     .from(nominees)
-    .leftJoin(votes, eq(votes.nomineeId, nominees.id))
     .where(eq(nominees.sessionId, sessionId))
-    .groupBy(nominees.id)
     .orderBy(asc(nominees.createdAt), asc(nominees.id));
-  return rows.map((r) => toAdminNomineeDto(r.nominee, r.voteCount));
+  const counts = await countVotesByNominee(
+    eq(nominees.sessionId, sessionId),
+    executor
+  );
+  return rows.map((row) => toAdminNomineeDto(row, counts.get(row.id) ?? {}));
 }
 
 /** Nominations owned by a device in a session, oldest first. */

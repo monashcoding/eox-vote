@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { Eye, EyeOff, ImagePlus, Pencil, Search, Trash2, X } from "lucide-react";
-import type { AdminNomineeDto, AdminSessionDetailDto } from "@/lib/api-types";
+import type {
+  AdminNomineeDto,
+  AdminSessionDetailDto,
+  CategoryDto,
+} from "@/lib/api-types";
 import { useAdminApi } from "./admin-gate";
 import { errorMessage } from "@/lib/client/error-message";
 import { matchesNameQuery } from "@/lib/client/name-search";
@@ -24,12 +28,15 @@ interface NomineesPanelProps {
 
 function NomineeRow({
   nominee,
+  categories,
   showVotes,
   hidden,
   onRefresh,
   onOpenPhoto,
 }: {
   nominee: AdminNomineeDto;
+  /** The session's categories, in order; never empty. */
+  categories: CategoryDto[];
   showVotes: boolean;
   /** Filtered out by the search. Hidden rather than unmounted so an open edit survives. */
   hidden: boolean;
@@ -44,6 +51,9 @@ function NomineeRow({
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const fileInputId = `nominee-photo-${nominee.id}`;
+  const votes = categories.map(
+    (category) => nominee.votesByCategory[category.id] ?? 0
+  );
 
   const patch = async (body: FormData, onDone?: () => void) => {
     setBusy(true);
@@ -169,12 +179,25 @@ function NomineeRow({
               <p className="text-base font-semibold wrap-break-word compact:text-sm">
                 {nominee.firstName} {nominee.lastName}
               </p>
-              {showVotes && (
-                <p className="text-xs font-semibold text-muted">
-                  <span className="tabular-nums">{nominee.votes.toLocaleString()}</span>{" "}
-                  {nominee.votes === 1 ? "vote" : "votes"}
-                </p>
-              )}
+              {showVotes &&
+                (categories.length === 1 ? (
+                  <p className="text-xs font-semibold text-muted">
+                    <span className="tabular-nums">{votes[0].toLocaleString()}</span>{" "}
+                    {votes[0] === 1 ? "vote" : "votes"}
+                  </p>
+                ) : (
+                  <p className="text-xs font-semibold text-muted">
+                    {categories.map((category, index) => (
+                      <React.Fragment key={category.id}>
+                        {index > 0 && " · "}
+                        {category.name}{" "}
+                        <span className="tabular-nums">
+                          {votes[index].toLocaleString()}
+                        </span>
+                      </React.Fragment>
+                    ))}
+                  </p>
+                ))}
             </div>
 
             <div className="flex flex-wrap items-center gap-1">
@@ -334,6 +357,7 @@ export function NomineesPanel({
                   key={nominee.id}
                   nominee={nominee}
                   showVotes={showVotes}
+                  categories={session.categories}
                   hidden={!matchingIds.has(nominee.id)}
                   onRefresh={onRefresh}
                   onOpenPhoto={(photo) => setPreview({ photo, open: true })}

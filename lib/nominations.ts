@@ -3,7 +3,7 @@ import { Stage, type AdminNomineeDto, type PublicNomineeDto } from "./api-types"
 import { db, type DbReader, type DbTransaction } from "./db";
 import { nomineePhotos, nominees, sessions, votes } from "./db/schema";
 import { HttpError } from "./http";
-import { toAdminNomineeDto, toPublicNomineeDto } from "./nominees";
+import { countVotesByNominee, toAdminNomineeDto, toPublicNomineeDto } from "./nominees";
 import { nominationLimitError } from "./nomination-limits";
 import type { NomineeForm } from "./photos";
 import { getCurrentSessionId, syncSessionInTx } from "./session";
@@ -208,7 +208,7 @@ export async function applyNomineeUpdate(
   return row;
 }
 
-/** Admin edit: any stage, no ownership check. Returns the DTO with its derived vote count. */
+/** Admin edit: any stage, no ownership check. Returns the DTO with its derived vote counts. */
 export async function updateNomineeAsAdmin(
   nomineeId: string,
   form: NomineeForm
@@ -225,13 +225,10 @@ export async function updateNomineeAsAdmin(
     return await applyNomineeUpdate(tx, nomineeId, form);
   });
 
-  const [{ voteCount }] = await db
-    .select({ voteCount: sql<number>`count(*)::int` })
-    .from(votes)
-    .where(eq(votes.nomineeId, nomineeId));
+  const counts = await countVotesByNominee(eq(votes.nomineeId, nomineeId));
 
   invalidatePublicState();
-  return toAdminNomineeDto(updated, voteCount);
+  return toAdminNomineeDto(updated, counts.get(nomineeId) ?? {});
 }
 
 /** Admin delete: any stage, no ownership check. Votes and photo cascade. */

@@ -20,15 +20,39 @@ export interface PublicNomineeDto {
   photoUrl: string;
 }
 
+/**
+ * What a session votes on, for example "Best Dressed". Every nominee is voted
+ * on in every category, one category after another in list order.
+ */
+export interface CategoryDto {
+  id: string;
+  name: string;
+}
+
 export interface PodiumPlaceDto {
   place: number;
   votes: number;
   nominees: PublicNomineeDto[];
 }
 
-export interface PublicResultsDto {
+/** One category's podium for the current votes, 1st place first. */
+export interface CategoryPodiumDto {
+  categoryId: string;
+  places: PodiumPlaceDto[];
+}
+
+/** What attendees may see of one category's podium. */
+export interface CategoryResultsDto {
+  categoryId: string;
+  /** Places to reveal in this category. */
   totalSteps: number;
+  /** Places revealed so far, lowest place first. */
   revealed: PodiumPlaceDto[];
+}
+
+export interface PublicResultsDto {
+  /** In category order, which is also the order places are revealed in. */
+  categories: CategoryResultsDto[];
 }
 
 export interface PublicSessionDto {
@@ -37,6 +61,8 @@ export interface PublicSessionDto {
   stage: Stage;
   timer: TimerDto;
   autoAdvance: boolean;
+  /** In voting order; never empty. */
+  categories: CategoryDto[];
   /** Nominating and voting only, otherwise empty. Oldest first. */
   nominees: PublicNomineeDto[];
   /** Results and finished only, otherwise null. */
@@ -50,15 +76,21 @@ export interface PublicStateDto {
   session: PublicSessionDto | null;
 }
 
+/** One vote: a device likes `nomineeId` in `categoryId`. */
+export interface VoteDto {
+  categoryId: string;
+  nomineeId: string;
+}
+
 export interface MeDto {
   sessionId: string | null;
   nominations: PublicNomineeDto[];
-  /** Nominee ids this device has voted for in the current session. */
-  votes: string[];
+  /** This device's votes in the current session, oldest first. */
+  votes: VoteDto[];
 }
 
 export interface VotesDto {
-  votes: string[];
+  votes: VoteDto[];
 }
 
 /** A society that runs an event with MAC, as attendees see it. */
@@ -93,7 +125,8 @@ export interface AdminSessionSummaryDto {
 }
 
 export interface AdminNomineeDto extends PublicNomineeDto {
-  votes: number;
+  /** Votes per category id; categories without votes are left out. */
+  votesByCategory: Record<string, number>;
   createdAt: number;
   updatedAt: number;
 }
@@ -113,13 +146,15 @@ export interface AdminSessionDetailDto {
   startedAt: number | null;
   finishedAt: number | null;
   serverNow: number;
+  /** In voting and reveal order; never empty. */
+  categories: CategoryDto[];
   nominees: AdminNomineeDto[];
-  /** Reveal steps shown to attendees so far (results stage). */
+  /** Reveal steps shown to attendees so far (results stage), across categories. */
   revealedCount: number;
-  /** Number of podium places to reveal for the current votes. */
+  /** Podium places to reveal for the current votes, across categories. */
   totalRevealSteps: number;
-  /** Podium for the current votes, 1st place first. Hosts only. */
-  podium: PodiumPlaceDto[];
+  /** Each category's podium for the current votes, in category order. Hosts only. */
+  podiums: CategoryPodiumDto[];
 }
 
 export const ControlAction = {

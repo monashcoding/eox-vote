@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Trophy } from "lucide-react";
 import {
+  CategoryResultsDto,
   PodiumPlaceDto,
-  PublicResultsDto,
   PublicSessionDto,
   Stage,
 } from "@/lib/api-types";
@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
 import { MacLogo } from "@/components/ui/mac-logo";
+import { CategoryTabs } from "./category-tabs";
 import { CollabLogos } from "./collab-mark";
 
 const WINNER_PLACE = 1;
@@ -135,32 +136,36 @@ function PlaceCard({
   );
 }
 
-export function ResultsView({
-  session,
+function CategoryPanel({
+  name,
+  results,
+  offset,
+  initialTotal,
+  finished,
 }: {
-  session: PublicSessionDto;
+  name: string;
+  results: CategoryResultsDto;
+  /** Places revealed in earlier categories: this category's start in the reveal order. */
+  offset: number;
+  /** Places revealed across all categories at first render. */
+  initialTotal: number;
+  finished: boolean;
 }): React.JSX.Element {
-  const results: PublicResultsDto = session.results ?? {
-    totalSteps: 0,
-    revealed: [],
-  };
-  const finished = session.stage === Stage.Finished;
-  // Places already on screen at first render appear without the entrance.
-  const [initialCount] = React.useState(results.revealed.length);
-
   if (results.totalSteps === 0) {
     return (
       <EmptyState
         mascot={Mascot.Sad}
-        title="No votes were cast"
-        description="There is no podium to show for this session."
+        title={`No votes for ${name}`}
+        description="Nobody voted in this category."
       />
     );
   }
 
   const waiting = results.revealed.length < results.totalSteps;
   // Revealed places arrive lowest first; show the newest at the top.
-  const shown = results.revealed.toReversed();
+  const shown = results.revealed
+    .map((group, index) => ({ group, revealIndex: offset + index }))
+    .toReversed();
 
   return (
     <div className="space-y-4">
@@ -178,17 +183,108 @@ export function ResultsView({
       )}
 
       <div aria-live="polite" className="space-y-4">
-        {shown.map((group) => (
+        {shown.map(({ group, revealIndex }) => (
           <PlaceCard
-            key={group.place}
+            key={`${results.categoryId}:${group.place}`}
             group={group}
-            animate={
-              !finished &&
-              results.revealed.indexOf(group) >= initialCount
-            }
+            animate={!finished && revealIndex >= initialTotal}
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+export function ResultsView({
+  session,
+}: {
+  session: PublicSessionDto;
+}): React.JSX.Element {
+  const resultsById = new Map<string, CategoryResultsDto>(
+    (session.results?.categories ?? []).map((results) => [
+      results.categoryId,
+      results,
+    ])
+  );
+  const categories = session.categories.map((category) => ({
+    category,
+    results: resultsById.get(category.id) ?? {
+      categoryId: category.id,
+      totalSteps: 0,
+      revealed: [],
+    },
+  }));
+  const finished = session.stage === Stage.Finished;
+  const totalSteps = categories.reduce(
+    (sum, { results }) => sum + results.totalSteps,
+    0
+  );
+  const totalRevealed = categories.reduce(
+    (sum, { results }) => sum + results.revealed.length,
+    0
+  );
+  const latestId =
+    categories.findLast(({ results }) => results.revealed.length > 0)?.category
+      .id ?? session.categories[0].id;
+
+  // Places already on screen at first render appear without the entrance.
+  const [initialTotal] = React.useState(totalRevealed);
+  // `seen` is the reveal total last acted on, so the tab jumps to a category
+  // only when the host reveals something new there, not on every poll.
+  const [selection, setSelection] = React.useState({
+    categoryId: latestId,
+    seen: totalRevealed,
+  });
+  if (totalRevealed > selection.seen) {
+    setSelection({ categoryId: latestId, seen: totalRevealed });
+  } else if (totalRevealed < selection.seen) {
+    setSelection({ categoryId: selection.categoryId, seen: totalRevealed });
+  }
+  const selectedId = categories.some(
+    ({ category }) => category.id === selection.categoryId
+  )
+    ? selection.categoryId
+    : latestId;
+
+  if (totalSteps === 0) {
+    return (
+      <EmptyState
+        mascot={Mascot.Sad}
+        title="No votes were cast"
+        description="There is no podium to show for this session."
+      />
+    );
+  }
+
+  let offset = 0;
+  let panel: React.JSX.Element | null = null;
+  for (const { category, results } of categories) {
+    if (category.id === selectedId) {
+      panel = (
+        <CategoryPanel
+          name={category.name}
+          results={results}
+          offset={offset}
+          initialTotal={initialTotal}
+          finished={finished}
+        />
+      );
+      break;
+    }
+    offset += results.revealed.length;
+  }
+
+  return (
+    <div className="space-y-4">
+      <CategoryTabs
+        categories={session.categories}
+        value={selectedId}
+        onValueChange={(categoryId) =>
+          setSelection({ categoryId, seen: totalRevealed })
+        }
+      >
+        {panel}
+      </CategoryTabs>
 
       {finished && (
         <div className="flex flex-col items-center gap-3 pt-2">

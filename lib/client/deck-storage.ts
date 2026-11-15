@@ -5,8 +5,12 @@ import {
 } from "./swipe-history.ts";
 
 const SEED_KEY = "eox:deck-seed";
-const swipedKey = (sessionId: string) => `eox:swiped:${sessionId}`;
+// A new key: before categories this held one array of ids for the whole session.
+const decksKey = (sessionId: string) => `eox:decks:${sessionId}`;
 const historyKey = (sessionId: string) => `eox:swipe-history:${sessionId}`;
+
+/** Swiped-away card ids per category id, oldest first. */
+export type SwipedByCategory = Readonly<Record<string, readonly string[]>>;
 
 function readStorage(key: string): string | null {
   try {
@@ -75,21 +79,35 @@ export function shuffleBySeed<T extends { id: string }>(
   return result;
 }
 
-export function loadSwipedIds(sessionId: string): string[] {
-  const raw = readStorage(swipedKey(sessionId));
-  if (!raw) return [];
+/** Reads stored decks, dropping anything malformed. */
+export function parseSwipedByCategory(raw: string | null): Record<string, string[]> {
+  if (!raw) return {};
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((id): id is string => typeof id === "string")
-      : [];
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return {};
+    }
+    const decks: Record<string, string[]> = {};
+    for (const [categoryId, ids] of Object.entries(parsed)) {
+      if (Array.isArray(ids)) {
+        decks[categoryId] = ids.filter((id): id is string => typeof id === "string");
+      }
+    }
+    return decks;
   } catch {
-    return [];
+    return {};
   }
 }
 
-export function saveSwipedIds(sessionId: string, ids: readonly string[]): void {
-  writeStorage(swipedKey(sessionId), JSON.stringify(ids));
+export function loadSwipedByCategory(sessionId: string): Record<string, string[]> {
+  return parseSwipedByCategory(readStorage(decksKey(sessionId)));
+}
+
+export function saveSwipedByCategory(
+  sessionId: string,
+  swiped: SwipedByCategory
+): void {
+  writeStorage(decksKey(sessionId), JSON.stringify(swiped));
 }
 
 /** The session's swipes, oldest first, for undo. */

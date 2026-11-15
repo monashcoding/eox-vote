@@ -106,6 +106,30 @@ export const sessions = pgTable(
   ]
 );
 
+/**
+ * What a session votes on, for example "Best Dressed". Every nominee is
+ * voted on in every category of their session, one category after another
+ * in `position` order, which is also the order results are revealed in.
+ */
+export const categories = pgTable(
+  "categories",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    position: integer().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("categories_session_id_idx").on(t.sessionId)]
+);
+
 export const nominees = pgTable(
   "nominees",
   {
@@ -147,14 +171,18 @@ export const votes = pgTable(
     nomineeId: uuid("nominee_id")
       .notNull()
       .references(() => nominees.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
     voterTokenHash: text("voter_token_hash").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (t) => [
-    primaryKey({ columns: [t.nomineeId, t.voterTokenHash] }),
+    primaryKey({ columns: [t.nomineeId, t.categoryId, t.voterTokenHash] }),
     index("votes_voter_token_hash_idx").on(t.voterTokenHash),
+    index("votes_category_id_idx").on(t.categoryId),
   ]
 );
 

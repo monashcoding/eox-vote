@@ -12,9 +12,13 @@ export const VoteChange = {
 
 export type VoteChange = (typeof VoteChange)[keyof typeof VoteChange];
 
-/** One swipe on the deck. The history keeps them oldest first. */
+/**
+ * One swipe on a category's deck. Every category has its own deck of the same
+ * nominees, so a card is a nominee in a category. Oldest first in the history.
+ */
 export interface SwipeRecord {
   id: string;
+  categoryId: string;
   direction: SwipeDirection;
   voteChange: VoteChange;
 }
@@ -48,24 +52,32 @@ export function recordSwipe(
   history: SwipeHistory,
   record: SwipeRecord
 ): SwipeHistory {
-  return [...history.filter((entry) => entry.id !== record.id), record];
+  return [
+    ...history.filter(
+      (entry) => entry.id !== record.id || entry.categoryId !== record.categoryId
+    ),
+    record,
+  ];
 }
 
 /** Drops a card's swipe, e.g. when its vote change failed and the card went back on the deck. */
-export function forgetSwipe(history: SwipeHistory, id: string): SwipeHistory {
-  return history.some((entry) => entry.id === id)
-    ? history.filter((entry) => entry.id !== id)
-    : history;
+export function forgetSwipe(
+  history: SwipeHistory,
+  categoryId: string,
+  id: string
+): SwipeHistory {
+  const kept = history.filter(
+    (entry) => entry.id !== id || entry.categoryId !== categoryId
+  );
+  return kept.length === history.length ? history : kept;
 }
 
 /** Keeps only swipes of cards that are still swiped away and still exist. */
 export function pruneSwipeHistory(
   history: SwipeHistory,
-  swipedIds: ReadonlySet<string>
+  isSwipedAway: (record: SwipeRecord) => boolean
 ): SwipeHistory {
-  return history.every((entry) => swipedIds.has(entry.id))
-    ? history
-    : history.filter((entry) => swipedIds.has(entry.id));
+  return history.every(isSwipedAway) ? history : history.filter(isSwipedAway);
 }
 
 /** Takes back the newest swipe, or null when there is nothing to undo. */
@@ -88,30 +100,21 @@ function isVoteChange(value: unknown): value is VoteChange {
   return (Object.values(VoteChange) as unknown[]).includes(value);
 }
 
-/**
- * Reads one stored entry. Entries saved before skips could remove votes carry
- * `addedVote: boolean` instead of `voteChange`.
- */
+/** Reads one stored entry; one without a category is from before categories and is dropped. */
 function toSwipeRecord(value: unknown): SwipeRecord | null {
   if (typeof value !== "object" || value === null) return null;
   const entry = value as Record<string, unknown>;
-  if (typeof entry.id !== "string") return null;
+  if (typeof entry.id !== "string" || typeof entry.categoryId !== "string") {
+    return null;
+  }
   if (entry.direction !== "left" && entry.direction !== "right") return null;
-  if (isVoteChange(entry.voteChange)) {
-    return {
-      id: entry.id,
-      direction: entry.direction,
-      voteChange: entry.voteChange,
-    };
-  }
-  if (typeof entry.addedVote === "boolean") {
-    return {
-      id: entry.id,
-      direction: entry.direction,
-      voteChange: entry.addedVote ? VoteChange.Added : VoteChange.None,
-    };
-  }
-  return null;
+  if (!isVoteChange(entry.voteChange)) return null;
+  return {
+    id: entry.id,
+    categoryId: entry.categoryId,
+    direction: entry.direction,
+    voteChange: entry.voteChange,
+  };
 }
 
 /** Reads a stored history, dropping anything malformed. */

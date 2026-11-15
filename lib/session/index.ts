@@ -1,6 +1,5 @@
 import { eq, sql } from "drizzle-orm";
 import {
-  AdminNomineeDto,
   AdminSessionDetailDto,
   AdminSessionSummaryDto,
   ControlRequest,
@@ -14,8 +13,14 @@ import {
   canAutoAdvance,
   isStaleStageMove,
 } from "./engine";
-import { buildPodium, clampRevealed } from "./ranking";
+import { buildCategoryPodiums, clampRevealed, revealSteps } from "./ranking";
 import { invalidatePublicState } from "./public-state";
+import {
+  insertDefaultCategory,
+  listCategories,
+  replaceCategoriesInTx,
+} from "../categories";
+import type { CategoryDraft } from "../category-fields";
 import { db, type DbReader, type DbTransaction } from "../db";
 import { appSettings, nominees, sessions, sponsors, votes } from "../db/schema";
 import { HttpError, requireUuid } from "../http";
@@ -53,13 +58,16 @@ export function toAdminSessionSummaryDto(
   };
 }
 
-export function toAdminSessionDetailDto(
+/** Loads what the host's session page shows for `session` and builds it. */
+async function loadAdminSessionDetail(
+  executor: DbReader,
   session: typeof sessions.$inferSelect,
-  currentSessionId: string | null,
-  adminNominees: AdminNomineeDto[],
-  sponsor: SponsorDto | null
-): AdminSessionDetailDto {
-  const podium = buildPodium(adminNominees);
+  currentSessionId: string | null
+): Promise<AdminSessionDetailDto> {
+  const categories = await listCategories(session.id, executor);
+  const adminNominees = await listAdminNominees(session.id, executor);
+  const podiums = buildCategoryPodiums(categories, adminNominees);
+  const totalRevealSteps = revealSteps(podiums).length;
   return {
     id: session.id,
     name: session.name,
@@ -69,15 +77,16 @@ export function toAdminSessionDetailDto(
     votingMinutes: session.votingMinutes,
     autoAdvance: session.autoAdvance,
     timer: toTimerDto(session.timerEndsAt, session.timerRemainingMs),
-    sponsor,
+    sponsor: await getSponsorDto(session.sponsorId, executor),
     createdAt: session.createdAt.getTime(),
     startedAt: session.startedAt ? session.startedAt.getTime() : null,
     finishedAt: session.finishedAt ? session.finishedAt.getTime() : null,
     serverNow: Date.now(),
+    categories,
     nominees: adminNominees,
-    revealedCount: clampRevealed(session.revealedCount, podium.length),
-    totalRevealSteps: podium.length,
-    podium,
+    revealedCount: clampRevealed(session.revealedCount, totalRevealSteps),
+    totalRevealSteps,
+    podiums,
   };
 }
 
@@ -225,20 +234,19 @@ export async function applyAdminSessionControl(
     const current = await syncSessionInTx(tx, id);
 
     if (isStaleStageMove(request, current.stage as Stage)) {
-      return toAdminSessionDetailDto(
-        current,
-        currentSessionId,
-        await listAdminNominees(current.id, tx),
-        await getSponsorDto(current.sponsorId, tx)
-      );
+      return await loadAdminSessionDetail(tx, current, currentSessionId);
     }
 
     const now = Date.now();
+    const podiums = buildCategoryPodiums(
+      await listCategories(current.id, tx),
+      await listAdminNominees(current.id, tx)
+    );
     const nextState = applyControl(
       current,
       request,
       now,
-      buildPodium(await listAdminNominees(current.id, tx)).length
+      revealSteps(podiums).length
     );
 
     const [updated] = await tx
@@ -255,12 +263,7 @@ export async function applyAdminSessionControl(
       .where(eq(sessions.id, id))
       .returning();
 
-    return toAdminSessionDetailDto(
-      updated,
-      currentSessionId,
-      await listAdminNominees(updated.id, tx),
-      await getSponsorDto(updated.sponsorId, tx)
-    );
+    return await loadAdminSessionDetail(tx, updated, currentSessionId);
   });
   // After commit, so a rebuild cannot cache the pre-control row under the new generation.
   invalidatePublicState();
@@ -272,11 +275,10 @@ export async function getAdminSessionDetail(
 ): Promise<AdminSessionDetailDto> {
   return await db.transaction(async (tx) => {
     const session = await syncSessionInTx(tx, id);
-    return toAdminSessionDetailDto(
+    return await loadAdminSessionDetail(
+      tx,
       session,
-      await getCurrentSessionId(tx),
-      await listAdminNominees(session.id, tx),
-      await getSponsorDto(session.sponsorId, tx)
+      await getCurrentSessionId(tx)
     );
   });
 }
@@ -299,7 +301,7 @@ export async function createAdminSession(
   }
 
   const sponsorId = input.sponsorId ?? null;
-  const { inserted, sponsor } = await db.transaction(async (tx) => {
+  const detail = await db.transaction(async (tx) => {
     if (sponsorId !== null) await lockSponsorInTx(tx, sponsorId);
     const [row] = await tx
       .insert(sessions)
@@ -311,12 +313,12 @@ export async function createAdminSession(
         sponsorId,
       })
       .returning();
-    return { inserted: row, sponsor: await getSponsorDto(sponsorId, tx) };
+    await insertDefaultCategory(tx, row.id);
+    return await loadAdminSessionDetail(tx, row, await getCurrentSessionId(tx));
   });
 
   invalidatePublicState();
-  const currentSessionId = await getCurrentSessionId();
-  return toAdminSessionDetailDto(inserted, currentSessionId, [], sponsor);
+  return detail;
 }
 
 export interface UpdateSessionInput {
@@ -326,6 +328,8 @@ export interface UpdateSessionInput {
   autoAdvance?: boolean;
   /** `null` clears the sponsor; unknown ids are a 404. */
   sponsorId?: string | null;
+  /** The whole category list in voting order; see `replaceCategoriesInTx`. */
+  categories?: CategoryDraft[];
 }
 
 export async function updateAdminSession(
@@ -366,8 +370,13 @@ export async function updateAdminSession(
     updates.sponsorId = input.sponsorId;
   }
 
-  const { updated, sponsor } = await db.transaction(async (tx) => {
+  const detail = await db.transaction(async (tx) => {
     if (input.sponsorId) await lockSponsorInTx(tx, input.sponsorId);
+    if (input.categories !== undefined) {
+      // Holds the session row lock, so votes and reveals wait for the new list.
+      const current = await syncSessionInTx(tx, id);
+      await replaceCategoriesInTx(tx, current, input.categories);
+    }
     const [row] = await tx
       .update(sessions)
       .set(updates)
@@ -376,17 +385,11 @@ export async function updateAdminSession(
     if (!row) {
       throw new HttpError(404, "Session not found");
     }
-    return { updated: row, sponsor: await getSponsorDto(row.sponsorId, tx) };
+    return await loadAdminSessionDetail(tx, row, await getCurrentSessionId(tx));
   });
 
   invalidatePublicState();
-  const currentSessionId = await getCurrentSessionId();
-  return toAdminSessionDetailDto(
-    updated,
-    currentSessionId,
-    await listAdminNominees(updated.id),
-    sponsor
-  );
+  return detail;
 }
 
 export async function deleteAdminSession(id: string): Promise<void> {

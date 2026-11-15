@@ -1,5 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
-import { Stage } from "./api-types";
+import { Stage, type VoteDto } from "./api-types";
+import { lockSessionCategoryInTx } from "./categories";
 import { db, type DbReader, type DbTransaction } from "./db";
 import { nominees, votes } from "./db/schema";
 import { HttpError } from "./http";
@@ -8,14 +9,14 @@ import { invalidatePublicState } from "./session/public-state";
 
 const NOT_VOTING = "Voting is not open right now";
 
-/** Nominee ids a device has voted for in one session, oldest vote first. */
+/** A device's votes in one session, oldest vote first. */
 export async function listDeviceVotes(
   sessionId: string,
   voterTokenHash: string,
   executor: DbReader = db
-): Promise<string[]> {
-  const rows = await executor
-    .select({ nomineeId: votes.nomineeId })
+): Promise<VoteDto[]> {
+  return await executor
+    .select({ categoryId: votes.categoryId, nomineeId: votes.nomineeId })
     .from(votes)
     .innerJoin(nominees, eq(nominees.id, votes.nomineeId))
     .where(
@@ -24,16 +25,16 @@ export async function listDeviceVotes(
         eq(votes.voterTokenHash, voterTokenHash)
       )
     )
-    .orderBy(asc(votes.createdAt), asc(votes.nomineeId));
-  return rows.map((row) => row.nomineeId);
+    .orderBy(asc(votes.createdAt), asc(votes.categoryId), asc(votes.nomineeId));
 }
 
 /**
  * Locks and syncs the current session, requires the voting stage and that the
- * nominee belongs to it. Returns the session id.
+ * category and the nominee both belong to it. Returns the session id.
  */
-async function requireVotableNominee(
+async function requireVotable(
   tx: DbTransaction,
+  categoryId: string,
   nomineeId: string
 ): Promise<string> {
   const sessionId = await getCurrentSessionId(tx);
@@ -41,7 +42,8 @@ async function requireVotableNominee(
     throw new HttpError(409, NOT_VOTING);
   }
   const session = await syncSessionInTx(tx, sessionId);
-  // Share lock: a concurrent nominee delete waits, so the vote insert cannot hit a missing FK.
+  // Share locks: a concurrent delete of either waits, so the vote insert cannot hit a missing FK.
+  await lockSessionCategoryInTx(tx, sessionId, categoryId);
   const [nominee] = await tx
     .select({ sessionId: nominees.sessionId })
     .from(nominees)
@@ -56,16 +58,17 @@ async function requireVotableNominee(
   return sessionId;
 }
 
-/** Idempotent: a second vote for the same nominee from the same device is a no-op. */
+/** Idempotent: a second vote for the same nominee in the same category is a no-op. */
 export async function castVote(
+  categoryId: string,
   nomineeId: string,
   voterTokenHash: string
-): Promise<string[]> {
+): Promise<VoteDto[]> {
   const result = await db.transaction(async (tx) => {
-    const sessionId = await requireVotableNominee(tx, nomineeId);
+    const sessionId = await requireVotable(tx, categoryId, nomineeId);
     await tx
       .insert(votes)
-      .values({ nomineeId, voterTokenHash })
+      .values({ nomineeId, categoryId, voterTokenHash })
       .onConflictDoNothing();
     return await listDeviceVotes(sessionId, voterTokenHash, tx);
   });
@@ -74,16 +77,18 @@ export async function castVote(
 }
 
 export async function removeVote(
+  categoryId: string,
   nomineeId: string,
   voterTokenHash: string
-): Promise<string[]> {
+): Promise<VoteDto[]> {
   const result = await db.transaction(async (tx) => {
-    const sessionId = await requireVotableNominee(tx, nomineeId);
+    const sessionId = await requireVotable(tx, categoryId, nomineeId);
     await tx
       .delete(votes)
       .where(
         and(
           eq(votes.nomineeId, nomineeId),
+          eq(votes.categoryId, categoryId),
           eq(votes.voterTokenHash, voterTokenHash)
         )
       );

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { shuffleBySeed } from "./deck-storage.ts";
+import { parseSwipedByCategory, shuffleBySeed } from "./deck-storage.ts";
 
 const ITEMS = ["a1", "b2", "c3", "d4"].map((id) => ({ id }));
 const ids = (items: readonly { id: string }[]) => items.map((i) => i.id).join(",");
@@ -34,5 +34,23 @@ describe("shuffleBySeed", () => {
     for (const [order, count] of counts) {
       assert.ok(count > 800 && count < 1200, `${order} came up ${count} times`);
     }
+  });
+});
+
+describe("parseSwipedByCategory", () => {
+  it("round-trips the swiped cards of each category", () => {
+    const decks = { dressed: ["a", "b"], animal: ["b"] };
+    assert.deepEqual(parseSwipedByCategory(JSON.stringify(decks)), decks);
+  });
+
+  it("drops malformed entries and ids", () => {
+    const raw = JSON.stringify({ dressed: ["a", 3, null, "b"], animal: "b", other: null });
+    assert.deepEqual(parseSwipedByCategory(raw), { dressed: ["a", "b"] });
+  });
+
+  it("ignores the single list stored before categories, and bad JSON", () => {
+    assert.deepEqual(parseSwipedByCategory(JSON.stringify(["a", "b"])), {});
+    assert.deepEqual(parseSwipedByCategory("{not json"), {});
+    assert.deepEqual(parseSwipedByCategory(null), {});
   });
 });

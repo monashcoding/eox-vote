@@ -1,4 +1,5 @@
 import {
+  CategoryDto,
   PublicNomineeDto,
   PublicResultsDto,
   PublicSessionDto,
@@ -6,16 +7,18 @@ import {
   PublicStateDto,
   Stage,
 } from "../api-types";
+import { listCategories } from "../categories";
 import { db } from "../db";
 import { sessions } from "../db/schema";
 import { HttpError } from "../http";
 import { listAdminNominees, listPublicNominees } from "../nominees";
 import { getSponsorDto } from "../sponsors";
 import { getCurrentSessionId, syncSessionInTx, toTimerDto } from "./index";
-import { buildPodium, publicResults } from "./ranking";
+import { buildCategoryPodiums, publicResults } from "./ranking";
 
 export function toPublicSessionDto(
   session: typeof sessions.$inferSelect,
+  categories: CategoryDto[],
   nominees: PublicNomineeDto[],
   results: PublicResultsDto | null,
   sponsor: PublicSponsorDto | null
@@ -26,6 +29,7 @@ export function toPublicSessionDto(
     stage: session.stage as Stage,
     timer: toTimerDto(session.timerEndsAt, session.timerRemainingMs),
     autoAdvance: session.autoAdvance,
+    categories,
     nominees,
     results,
     sponsor,
@@ -72,6 +76,7 @@ async function buildPublicSession(): Promise<PublicSessionDto | null> {
       throw err;
     }
 
+    const categories = await listCategories(sessionRow.id, tx);
     const showNominees =
       sessionRow.stage === Stage.Nominating ||
       sessionRow.stage === Stage.Voting;
@@ -84,13 +89,17 @@ async function buildPublicSession(): Promise<PublicSessionDto | null> {
     const results = showResults
       ? publicResults(
           sessionRow.stage as Stage,
-          buildPodium(await listAdminNominees(sessionRow.id, tx)),
+          buildCategoryPodiums(
+            categories,
+            await listAdminNominees(sessionRow.id, tx)
+          ),
           sessionRow.revealedCount
         )
       : null;
     const sponsor = await getSponsorDto(sessionRow.sponsorId, tx);
     return toPublicSessionDto(
       sessionRow,
+      categories,
       nominees,
       results,
       sponsor && {

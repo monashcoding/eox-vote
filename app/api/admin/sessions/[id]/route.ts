@@ -24,6 +24,10 @@ const updateSessionSchema = z.object({
   votingMinutes: z.number().int().min(0).max(600).optional(),
   autoAdvance: z.boolean().optional(),
   sponsorId: z.string().nullable().optional(),
+  /** The whole list in voting order; names and limits are checked by the session service. */
+  categories: z
+    .array(z.object({ id: z.string().nullable(), name: z.string() }))
+    .optional(),
 });
 
 export const GET = handleRoute<RouteContext>(
