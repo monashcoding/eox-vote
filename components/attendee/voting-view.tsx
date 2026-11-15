@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw, Undo2 } from "lucide-react";
+import { Check, RotateCcw, Undo2 } from "lucide-react";
 import type {
   MeDto,
   PublicNomineeDto,
@@ -22,7 +22,6 @@ import {
 import { errorMessage } from "@/lib/client/error-message";
 import { usePolling } from "@/lib/client/use-polling";
 import { ATTENDEE_RETENTION_NOTICE } from "@/lib/retention";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorNote, Mascot } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/label";
@@ -39,20 +38,12 @@ import {
   voteChangeFor,
   type SwipeHistory,
 } from "@/lib/client/swipe-history";
-import { CategoryTabs } from "./category-tabs";
+import { BottomTabBar } from "./bottom-tab-bar";
 import { PhotoPreview, type PreviewPhoto } from "./photo-preview";
 import { VoteGrid } from "./vote-grid";
 
-const Tab = {
-  Swipe: "swipe",
-  All: "all",
-} as const;
-
-type Tab = (typeof Tab)[keyof typeof Tab];
-
-/** Bottom bar triggers fill their half: no rounding, border or inset gap. */
-const TAB_TRIGGER_CLASS =
-  "rounded-none border-0 focus-visible:ring-inset data-active:bg-accent";
+/** The All tab's value; every other tab is a category's deck, by id. */
+const ALL_VIEW = "all";
 
 /** This device's votes: nominee ids per category id. */
 type VotesByCategory = Readonly<Record<string, ReadonlySet<string>>>;
@@ -78,9 +69,11 @@ function groupVotes(votes: readonly VoteDto[]): VotesByCategory {
 
 /**
  * Swiping for every category of the session. Each category is its own deck of
- * every nominee, swiped one category after another: the tabs above switch
- * between them, and finishing a deck moves on to the next category with cards
- * left. Undo takes back the last swipe in any category and shows its deck.
+ * every nominee, swiped one category after another. The bar under the deck
+ * has a tab per category (just "Swipe" with one) and All; finishing a deck
+ * moves on to the next category with cards left. The bar is the only control
+ * row added for categories, so the photos keep their size. Undo takes back the
+ * last swipe in any category and shows its deck.
  */
 export function VotingView({
   session,
@@ -90,12 +83,9 @@ export function VotingView({
   onChanged: () => Promise<void>;
 }): React.JSX.Element {
   const { categories, nominees } = session;
-  const [tab, setTab] = React.useState<Tab>(Tab.Swipe);
-  // Null until the attendee picks a tab or finishes a deck; until then the
-  // first category with cards left shows.
-  const [chosenCategoryId, setChosenCategoryId] = React.useState<string | null>(
-    null
-  );
+  // A category id or ALL_VIEW. Null until the attendee picks a tab or
+  // finishes a deck; until then the first category with cards left shows.
+  const [view, setView] = React.useState<string | null>(null);
   const [votes, setVotes] = React.useState<VotesByCategory | null>(null);
   const [pendingKeys, setPendingKeys] = React.useState<ReadonlySet<string>>(
     () => new Set()
@@ -149,8 +139,11 @@ export function VotingView({
     const done = new Set(swiped[categoryId] ?? []);
     return nominees.filter((nominee) => !done.has(nominee.id)).length;
   };
+  const showingAll = view === ALL_VIEW;
+  // The deck's category. While All shows there is no deck, and this is only
+  // the fallback that orders the grid.
   const category =
-    categories.find((c) => c.id === chosenCategoryId) ??
+    categories.find((c) => c.id === view) ??
     categories.find((c) => cardsLeftIn(c.id) > 0) ??
     categories[0];
 
@@ -304,7 +297,7 @@ export function VotingView({
       const next = [...categories.slice(index + 1), ...categories.slice(0, index)].find(
         (c) => cardsLeftIn(c.id) > 0
       );
-      setChosenCategoryId(next?.id ?? categoryId);
+      setView(next?.id ?? categoryId);
     }
     if (voteChange === VoteChange.None) return;
     void submitVote(categoryId, card.id, voteChange === VoteChange.Added).then((ok) => {
@@ -343,27 +336,19 @@ export function VotingView({
     });
     // The last swipe may have been in another category, the one just
     // finished: show the deck the card goes back to.
-    setChosenCategoryId(record.categoryId);
+    setView(record.categoryId);
     if (step.restoreVote !== null) {
       void submitVote(record.categoryId, record.id, step.restoreVote);
     }
   };
 
   const multipleCategories = categories.length > 1;
-  const votedHere = votesNow[category.id] ?? NO_IDS;
-  const votedCount = ordered.filter((nominee) => votedHere.has(nominee.id)).length;
-  const pendingPrefix = voteKey(category.id, "");
-  const pendingHere = new Set(
-    [...pendingKeys]
-      .filter((key) => key.startsWith(pendingPrefix))
-      .map((key) => key.slice(pendingPrefix.length))
-  );
-  const finishedCategories = new Set(
-    nominees.length === 0
-      ? []
-      : categories.filter((c) => cardsLeftIn(c.id) === 0).map((c) => c.id)
-  );
-  const deckShown = tab === Tab.Swipe && cards.length > 0;
+  const isPending = (categoryId: string, nomineeId: string) =>
+    pendingKeys.has(voteKey(categoryId, nomineeId));
+  const votedCount = ordered.filter((nominee) =>
+    hasVote(category.id, nominee.id)
+  ).length;
+  const deckShown = !showingAll && cards.length > 0;
 
   /*
    * Opened from the deck, the preview always shows the deck's top card and
@@ -385,169 +370,167 @@ export function VotingView({
     if (cards.length === 1) setPreview(null);
   };
 
-  const grid = (
-    <VoteGrid
-      nominees={ordered}
-      votedIds={votedHere}
-      pendingIds={pendingHere}
-      onToggle={(id, vote) => void submitVote(category.id, id, vote)}
-      onOpenPhoto={openPreview}
+  const noEntries = (
+    <EmptyState
+      mascot={Mascot.Wave}
+      title="No entries to vote on"
+      description="Nobody was nominated in this session."
     />
   );
 
   return (
     // A flex column down to the deck, so the deck gets the height left over.
-    <CategoryTabs
-      categories={categories}
-      value={category.id}
-      onValueChange={setChosenCategoryId}
-      done={finishedCategories}
+    <Tabs
+      value={showingAll ? ALL_VIEW : category.id}
+      onValueChange={(value) => setView(String(value))}
       className="flex flex-1 flex-col"
-      contentClassName="flex flex-1 flex-col"
     >
-      <Tabs
-        value={tab}
-        onValueChange={(value) => setTab(value as Tab)}
-        className="flex flex-1 flex-col"
-      >
-        {!deckShown && <ErrorNote message={error} className="mb-4" />}
+      {!deckShown && <ErrorNote message={error} className="mb-4" />}
 
-        <TabsContent value={Tab.Swipe} className="mt-0 flex flex-1 flex-col">
-          {ordered.length === 0 ? (
-            <EmptyState
-              mascot={Mascot.Wave}
-              title="No entries to vote on"
-              description="Nobody was nominated in this session."
-            />
-          ) : cards.length > 0 ? (
-            <div className="relative flex flex-1 flex-col gap-4 short:gap-2">
-              {/* Floats over the progress text and the top of the card, so it
-                  never moves the deck; opaque so it reads over the photo. */}
-              {error && (
-                <div className="absolute inset-x-0 top-0 z-40 rounded-control bg-background">
-                  <ErrorNote message={error} />
-                </div>
-              )}
-              <div className="text-center">
-                <Eyebrow>
-                  {cards.length} of {ordered.length} left
-                </Eyebrow>
-                {/* Dropped below 44rem tall: the card needs the room more than the hint. */}
-                <p className="mt-1 text-sm text-muted [@media(height<44rem)]:hidden">
-                  {multipleCategories
-                    ? `Swipe right to vote for ${category.name}, left to skip.`
-                    : "Swipe right to vote, left to skip."}
-                </p>
+      <TabsContent value={category.id} className="mt-0 flex flex-1 flex-col">
+        {ordered.length === 0 ? (
+          noEntries
+        ) : cards.length > 0 ? (
+          <div className="relative flex flex-1 flex-col gap-4 short:gap-2">
+            {/* Floats over the progress text and the top of the card, so it
+                never moves the deck; opaque so it reads over the photo. */}
+            {error && (
+              <div className="absolute inset-x-0 top-0 z-40 rounded-control bg-background">
+                <ErrorNote message={error} />
               </div>
-              <SwipeDeck
-                // Every category deals the same nominees, so a deck must not
-                // carry a drag or a flight over into another category's deck.
-                key={category.id}
-                cards={cards}
-                onSwipe={handleSwipe}
-                onUndo={handleUndo}
-                canUndo={undoable.length > 0}
-                returningCard={returningHere}
-                onOpenCard={(card) =>
-                  openPreview({ url: card.imageUrl, name: card.title }, true)
-                }
-                className="min-h-56 flex-1 short:min-h-40"
-              />
+            )}
+            <div className="text-center">
+              <Eyebrow>
+                {cards.length} of {ordered.length} left
+              </Eyebrow>
+              {/* Dropped below 44rem tall: the card needs the room more than the hint. */}
+              <p className="mt-1 text-sm text-muted [@media(height<44rem)]:hidden">
+                {multipleCategories
+                  ? `Swipe right to vote for ${category.name}, left to skip.`
+                  : "Swipe right to vote, left to skip."}
+              </p>
             </div>
-          ) : (
-            <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold leading-snug sm:text-xl">
-                  You voted for {votedCount}
-                  {multipleCategories && ` in ${category.name}`}
-                </h2>
-                <div className="flex w-full gap-3 md:w-auto">
-                  {undoable.length > 0 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1 md:flex-none"
-                      onClick={handleUndo}
-                    >
-                      <Undo2 />
-                      Undo
-                    </Button>
-                  )}
+            <SwipeDeck
+              // Every category deals the same nominees, so a deck must not
+              // carry a drag or a flight over into another category's deck.
+              key={category.id}
+              cards={cards}
+              onSwipe={handleSwipe}
+              onUndo={handleUndo}
+              canUndo={undoable.length > 0}
+              returningCard={returningHere}
+              onOpenCard={(card) =>
+                openPreview({ url: card.imageUrl, name: card.title }, true)
+              }
+              className="min-h-56 flex-1 short:min-h-40"
+            />
+          </div>
+        ) : (
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold leading-snug sm:text-xl">
+                You voted for {votedCount}
+                {multipleCategories && ` in ${category.name}`}
+              </h2>
+              <div className="flex w-full gap-3 md:w-auto">
+                {undoable.length > 0 && (
                   <Button
                     type="button"
                     variant="outline"
                     className="flex-1 md:flex-none"
-                    onClick={() => {
-                      updateSwiped(category.id, () => []);
-                      updateHistory((current) =>
-                        current.filter((record) => record.categoryId !== category.id)
-                      );
-                    }}
+                    onClick={handleUndo}
                   >
-                    <RotateCcw />
-                    Swipe again
+                    <Undo2 />
+                    Undo
                   </Button>
-                </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 md:flex-none"
+                  onClick={() => {
+                    updateSwiped(category.id, () => []);
+                    updateHistory((current) =>
+                      current.filter((record) => record.categoryId !== category.id)
+                    );
+                  }}
+                >
+                  <RotateCcw />
+                  Swipe again
+                </Button>
               </div>
-              <p className="text-sm text-muted">
-                Add or remove votes below until voting closes.
-              </p>
-              {grid}
-            </section>
-          )}
-        </TabsContent>
-
-        <TabsContent value={Tab.All} className="mt-0">
-          {ordered.length === 0 ? (
-            <EmptyState
-              mascot={Mascot.Wave}
-              title="No entries to vote on"
-              description="Nobody was nominated in this session."
+            </div>
+            <p className="text-sm text-muted">
+              Add or remove votes below until voting closes.
+            </p>
+            <VoteGrid
+              nominees={ordered}
+              categories={[category]}
+              hasVote={hasVote}
+              isPending={isPending}
+              onToggle={(categoryId, id, vote) => void submitVote(categoryId, id, vote)}
+              onOpenPhoto={openPreview}
             />
-          ) : (
-            grid
-          )}
-          <p className="mt-4 text-xs text-muted">{ATTENDEE_RETENTION_NOTICE}</p>
-        </TabsContent>
+          </section>
+        )}
+      </TabsContent>
 
-        {/*
-          Bottom tab bar. Under the deck it ends the one-screen column, above
-          the shell's safe-area padding. Over the scrolling lists it sticks to
-          the bottom of the screen; its padding covers the safe area there and
-          the matching negative margin keeps the in-flow spacing unchanged.
-        */}
-        <div
-          className={cn(
-            "mt-4 sm:mt-6 short:mt-3",
-            !deckShown &&
-              "sticky bottom-0 z-20 -mb-[calc(env(safe-area-inset-bottom,0px)_+_0.75rem)] bg-background pt-3 pb-[calc(env(safe-area-inset-bottom,0px)_+_0.75rem)]"
-          )}
-        >
-          {/* No inner padding or selection border: the active tab is the
-              lighter fill with bold white text. */}
-          <TabsList className="overflow-hidden p-0">
-            <TabsTrigger value={Tab.Swipe} className={TAB_TRIGGER_CLASS}>
-              Swipe
-            </TabsTrigger>
-            <TabsTrigger value={Tab.All} className={TAB_TRIGGER_CLASS}>
-              All ({ordered.length})
-            </TabsTrigger>
-          </TabsList>
-        </div>
-        <PhotoPreview
-          photo={previewPhoto}
-          open={preview?.open ?? false}
-          onOpenChange={(open) =>
-            setPreview((current) => (current ? { ...current, open } : null))
-          }
-          swipe={
-            deckPreview
-              ? { id: deckPreview.id, onSwipe: handlePreviewSwipe }
-              : undefined
-          }
-          error={error}
-        />
-      </Tabs>
-    </CategoryTabs>
+      {/* Every entry, with a vote toggle for each category. */}
+      <TabsContent value={ALL_VIEW} className="mt-0">
+        {ordered.length === 0 ? (
+          noEntries
+        ) : (
+          <VoteGrid
+            nominees={ordered}
+            categories={categories}
+            hasVote={hasVote}
+            isPending={isPending}
+            onToggle={(categoryId, id, vote) => void submitVote(categoryId, id, vote)}
+            onOpenPhoto={openPreview}
+          />
+        )}
+        <p className="mt-4 text-xs text-muted">{ATTENDEE_RETENTION_NOTICE}</p>
+      </TabsContent>
+
+      {/* One bar for the decks and All: categories share it with All rather
+          than adding a row, so the deck keeps its height. */}
+      <BottomTabBar sticky={!deckShown}>
+        <TabsList aria-label={multipleCategories ? "Categories" : undefined}>
+          {categories.map((c) => {
+            const finished = nominees.length > 0 && cardsLeftIn(c.id) === 0;
+            return (
+              <TabsTrigger key={c.id} value={c.id}>
+                {multipleCategories ? (
+                  <>
+                    {finished && <Check aria-hidden className="size-4 shrink-0 text-success" />}
+                    {/* Long names wrap onto a second line within the 44px tab. */}
+                    <span className="line-clamp-2 text-center leading-tight">
+                      {c.name}
+                    </span>
+                    {finished && <span className="sr-only"> (done)</span>}
+                  </>
+                ) : (
+                  "Swipe"
+                )}
+              </TabsTrigger>
+            );
+          })}
+          <TabsTrigger value={ALL_VIEW}>All ({ordered.length})</TabsTrigger>
+        </TabsList>
+      </BottomTabBar>
+      <PhotoPreview
+        photo={previewPhoto}
+        open={preview?.open ?? false}
+        onOpenChange={(open) =>
+          setPreview((current) => (current ? { ...current, open } : null))
+        }
+        swipe={
+          deckPreview
+            ? { id: deckPreview.id, onSwipe: handlePreviewSwipe }
+            : undefined
+        }
+        error={error}
+      />
+    </Tabs>
   );
 }

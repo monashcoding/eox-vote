@@ -1,69 +1,53 @@
 "use client";
 
 import * as React from "react";
-import { Check } from "lucide-react";
 import type { CategoryDto } from "@/lib/api-types";
-import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BottomTabBar } from "./bottom-tab-bar";
 
 /**
- * The session's categories as tabs, in voting order, with the selected
- * category's content as the panel under them. A single category shows no
- * tabs, just `children`, so one-category sessions look as they always have.
- * Tabs in `done` get a check: the attendee has finished that category.
+ * The session's categories as a tab bar at the bottom of the screen, sticky
+ * over the scrolling content, with the selected category's content as the
+ * panel above it. A single category shows no tabs, just `children`, so
+ * one-category sessions look as they always have.
  */
 export function CategoryTabs({
   categories,
   value,
   onValueChange,
-  done,
-  className,
-  contentClassName,
   children,
 }: {
   categories: readonly CategoryDto[];
   value: string;
   onValueChange: (categoryId: string) => void;
-  done?: ReadonlySet<string>;
-  className?: string;
-  contentClassName?: string;
   children: React.ReactNode;
 }): React.JSX.Element {
   if (categories.length < 2) {
     return <>{children}</>;
   }
   return (
+    // Fills the screen's column, so the bar sits at the bottom even when the
+    // content above it is short.
     <Tabs
       value={value}
       onValueChange={(next) => onValueChange(String(next))}
-      className={className}
+      className="flex flex-1 flex-col"
     >
-      {/* Equal widths while the names fit; past that each tab keeps its
-          name on one line and the bar scrolls sideways. */}
-      <TabsList
-        aria-label="Categories"
-        className="auto-cols-[minmax(max-content,1fr)] overflow-x-auto"
-      >
-        {categories.map((category) => {
-          const finished = done?.has(category.id) ?? false;
-          return (
-            <TabsTrigger
-              key={category.id}
-              value={category.id}
-              className="whitespace-nowrap"
-            >
-              {finished && <Check aria-hidden className="size-4 text-success" />}
-              {category.name}
-              {finished && <span className="sr-only"> (done)</span>}
-            </TabsTrigger>
-          );
-        })}
-      </TabsList>
-      {/* A tighter gap on short (landscape) screens, where the swipe deck is
-          already down to its minimum height. */}
-      <TabsContent value={value} className={cn("mt-4 short:mt-2", contentClassName)}>
+      <TabsContent value={value} className="mt-0 flex-1">
         {children}
       </TabsContent>
+      <BottomTabBar sticky>
+        <TabsList aria-label="Categories">
+          {categories.map((category) => (
+            <TabsTrigger key={category.id} value={category.id}>
+              {/* Long names wrap onto a second line within the 44px tab. */}
+              <span className="line-clamp-2 text-center leading-tight">
+                {category.name}
+              </span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </BottomTabBar>
     </Tabs>
   );
 }

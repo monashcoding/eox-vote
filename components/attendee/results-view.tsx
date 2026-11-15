@@ -275,34 +275,34 @@ export function ResultsView({
   }
 
   return (
-    <div className="space-y-4">
-      <CategoryTabs
-        categories={session.categories}
-        value={selectedId}
-        onValueChange={(categoryId) =>
-          setSelection({ categoryId, seen: totalRevealed })
-        }
-      >
+    <CategoryTabs
+      categories={session.categories}
+      value={selectedId}
+      onValueChange={(categoryId) =>
+        setSelection({ categoryId, seen: totalRevealed })
+      }
+    >
+      <div className="space-y-4">
         {panel}
-      </CategoryTabs>
 
-      {finished && (
-        <div className="flex flex-col items-center gap-3 pt-2">
-          {session.sponsor ? (
-            // No names here, so each logo carries its society's name.
-            <CollabLogos
-              sponsor={session.sponsor}
-              size={48}
-              className="gap-2.5 text-lg"
-            />
-          ) : (
-            <MacLogo size={48} decorative />
-          )}
-          <p className="text-center text-base font-semibold">
-            Thanks for voting!
-          </p>
-        </div>
-      )}
-    </div>
+        {finished && (
+          <div className="flex flex-col items-center gap-3 pt-2">
+            {session.sponsor ? (
+              // No names here, so each logo carries its society's name.
+              <CollabLogos
+                sponsor={session.sponsor}
+                size={48}
+                className="gap-2.5 text-lg"
+              />
+            ) : (
+              <MacLogo size={48} decorative />
+            )}
+            <p className="text-center text-base font-semibold">
+              Thanks for voting!
+            </p>
+          </div>
+        )}
+      </div>
+    </CategoryTabs>
   );
 }
