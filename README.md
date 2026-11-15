@@ -6,20 +6,21 @@ Built with Next.js 16 (App Router), React 19, Tailwind CSS v4, Postgres and Driz
 
 ## How an event runs
 
-Each event is a **session**. The host creates one at `/admin`, marks it as the current session and moves it through five stages:
+Each event is a **session**. The host creates one at `/admin`, marks it as the current session and moves it through five stages. A session votes in one or more **categories**, such as "Best Dressed" and "Animal Lookalike": everyone nominated is voted on in every category, and each category has its own podium. A new session starts with "Best Dressed"; hosts add, rename and reorder categories in its settings.
 
 | Stage | What attendees see |
 | --- | --- |
 | `pending` | "Waiting for host to start a session" |
 | `nominating` | Nominate form (first name, last name, costume photo) and a browsable list of all nominations. Attendees can edit or delete their own nominations. |
-| `voting` | A swipe deck: swipe right to vote for an entry, left to skip. Tapping the top card shows just its photo, full size, where it can be swiped the same way; the next entry follows. After the deck they see who they voted for and can add or remove votes. All entries stay browsable, and a photo opened from that list is view only. |
-| `results` | Nothing at first. Each time the host presses the reveal button, which names the place it shows ("Reveal 3rd place", "Reveal joint 2nd place"), every attendee sees that place appear (3rd, then 2nd, then 1st). |
+| `voting` | A swipe deck: swipe right to vote for an entry, left to skip. With several categories, tabs above the deck switch between them: each category deals every entry again, and finishing one moves on to the next category with cards left. Undo takes back the last swipe in any category. Tapping the top card shows just its photo, full size, where it can be swiped the same way; the next entry follows. After a deck they see who they voted for in that category and can add or remove votes. All entries stay browsable, and a photo opened from that list is view only. |
+| `results` | Nothing at first. Each time the host presses the reveal button, which names the place it shows ("Reveal 3rd place", "Reveal joint 2nd place in Animal Lookalike"), every attendee sees that place appear. Categories are revealed in order, each 3rd, then 2nd, then 1st; with several, the attendee's tabs follow the reveal. |
 | `finished` | The full podium stays visible. |
 
 Rules worth knowing:
 
 - **Timers are informational.** Nominating and voting can have a countdown ("Nominations close in 12:34"). When it reaches zero the stage stays open, unless the session has **auto-advance** on, in which case it moves to the next stage by itself. During nominating and voting, hosts can pause, resume, stop, set, and add or remove time.
-- **One vote per entry per device.** A device can vote for many entries but only once for each. This is enforced by a primary key on `(nominee_id, voter_token_hash)`.
+- **One vote per entry per category per device.** A device can vote for many entries, and for the same entry in several categories, but only once for each entry in each category. This is enforced by a primary key on `(nominee_id, category_id, voter_token_hash)`.
+- **Categories are fixed once results are shown.** From then on hosts can only rename them: adding, removing or reordering one would change which places have already been revealed. Removing a category earlier deletes its votes.
 - **Ties share a place** (1, 2, 2, 4). Only entries with at least one vote are ranked. Joint places are revealed together.
 - Moving a stage back never deletes nominations or votes.
 
@@ -44,7 +45,7 @@ The compose database is Postgres 17 on host port **5433** (user and password `po
 
 ### Host page
 
-The host page is `/admin`. It is deliberately not linked from the attendee pages, so give the address only to hosts. From there hosts manage sessions, stages and timers, nominations (rename, replace photo, delete), the results reveal, and can save a QR code for each session, either as a poster (logos, event name, address) or as the square code alone.
+The host page is `/admin`. It is deliberately not linked from the attendee pages, so give the address only to hosts. From there hosts manage sessions, their voting categories, stages and timers, nominations (rename, replace photo, delete), the results reveal, and can save a QR code for each session, either as a poster (logos, event name, address) or as the square code alone.
 
 ### Admin passcode
 
@@ -104,15 +105,16 @@ Notes:
 
 Postgres, managed by Drizzle migrations in `drizzle/`. Schema: `lib/db/schema.ts`.
 
-- `sessions`: name, stage, default timer minutes for nominating and voting (0 means no timer), auto-advance flag, the running timer end time or the paused remaining time, how many results places are revealed, and start and finish times.
+- `sessions`: name, stage, default timer minutes for nominating and voting (0 means no timer), auto-advance flag, the running timer end time or the paused remaining time, how many results places are revealed (counted across categories, in reveal order), and start and finish times.
+- `categories`: belongs to a session; a name and a position, which is both the voting order and the reveal order.
 - `nominees`: belongs to a session; first and last name, a hash of the owning device token, and a photo version used to bust the browser cache.
 - `nominee_photos`: the image bytes and content type, one row per nominee (kept apart so browsing `nominees` in a database tool stays light).
 - `sponsors`: societies that run events with MAC, reused across sessions. A full name (unique, ignoring case), an optional short name such as "CISSA", and a logo version used to bust the browser cache.
 - `sponsor_logos`: the logo bytes and content type, one row per sponsor. Logos must be PNG, JPEG or WebP and at most 2 MB; SVG is refused because an SVG served from the app's own origin can run script.
-- `votes`: primary key `(nominee_id, voter_token_hash)`. Vote counts are always derived with `count(*)`, never stored.
+- `votes`: primary key `(nominee_id, category_id, voter_token_hash)`. Vote counts are always derived with `count(*)`, never stored.
 - `app_settings`: a single row holding the admin passcode and the current session.
 
-Deleting a session removes its nominees, photos and votes.
+Deleting a session removes its categories, nominees, photos and votes.
 
 ## Data retention
 
